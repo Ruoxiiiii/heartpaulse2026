@@ -1,80 +1,170 @@
 /* =========================================================
-   OVERLAY - Data visualization UI
+   OVERLAY - Data visualization UI (HTML-based for sharp text)
 ========================================================= */
 
-function drawBarRow(label, valueText, frac, x, y, barW) {
-  // Higher opacity for sharper text
-  fill(0, 0, 96, 0.85);
-  text(label, x, y);
+let _overlayEl = null;
+let _overlayInitialized = false;
 
-  fill(0, 0, 96, 0.7);
-  text(valueText, x + 72, y);
+function _initOverlay() {
+  if (_overlayInitialized) return;
+  _overlayInitialized = true;
 
-  const bx = x + 120;
-  const by = y - 10;
-  const h = 8;
+  // Create overlay container
+  _overlayEl = document.createElement('div');
+  _overlayEl.id = 'data-overlay';
+  _overlayEl.innerHTML = `
+    <div class="row" id="row-bpm">
+      <span class="label">BPM</span>
+      <span class="value" id="val-bpm">72</span>
+      <div class="bar"><div class="fill" id="fill-bpm"></div></div>
+    </div>
+    <div class="row" id="row-arousal">
+      <span class="label">Arousal</span>
+      <span class="value" id="val-arousal">0.20</span>
+      <div class="bar"><div class="fill" id="fill-arousal"></div></div>
+    </div>
+    <div class="row" id="row-valence">
+      <span class="label">Valence</span>
+      <span class="value" id="val-valence">0.00</span>
+      <div class="bar valence-bar">
+        <div class="center-line"></div>
+        <div class="fill-pos" id="fill-valence-pos"></div>
+        <div class="fill-neg" id="fill-valence-neg"></div>
+      </div>
+    </div>
+    <div class="row" id="row-proximity">
+      <span class="label">Proximity</span>
+      <span class="value" id="val-proximity">0.00</span>
+      <div class="bar"><div class="fill" id="fill-proximity"></div></div>
+    </div>
+  `;
 
-  fill(0, 0, 96, 0.14);
-  rect(bx, by, barW, h, 4);
+  // Add styles
+  const style = document.createElement('style');
+  style.textContent = `
+    #data-overlay {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 100;
+      font-family: "SF Mono", "Fira Code", "Consolas", "Monaco", monospace;
+      font-size: 13px;
+      line-height: 1;
+      color: rgba(255, 255, 255, 0.92);
+      pointer-events: none;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    #data-overlay .row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      height: 16px;
+    }
+    #data-overlay .row.hidden {
+      display: none;
+    }
+    #data-overlay .label {
+      width: 72px;
+      color: rgba(255, 255, 255, 0.88);
+      font-weight: 500;
+    }
+    #data-overlay .value {
+      width: 48px;
+      color: rgba(255, 255, 255, 0.7);
+      text-align: right;
+      margin-right: 12px;
+    }
+    #data-overlay .bar {
+      width: 160px;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 5px;
+      position: relative;
+      overflow: hidden;
+    }
+    #data-overlay .fill {
+      height: 100%;
+      background: rgba(255, 255, 255, 0.55);
+      border-radius: 5px;
+      transition: width 0.1s ease-out;
+    }
+    #data-overlay .valence-bar .center-line {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      margin-left: -1px;
+      background: rgba(255, 255, 255, 0.3);
+    }
+    #data-overlay .fill-pos {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      height: 100%;
+      background: rgba(247, 150, 180, 0.7);
+      border-radius: 0 5px 5px 0;
+      transition: width 0.1s ease-out;
+    }
+    #data-overlay .fill-neg {
+      position: absolute;
+      right: 50%;
+      top: 0;
+      height: 100%;
+      background: rgba(200, 90, 90, 0.7);
+      border-radius: 5px 0 0 5px;
+      transition: width 0.1s ease-out;
+    }
+  `;
 
-  fill(0, 0, 96, 0.6);
-  rect(bx, by, barW * constrain(frac, 0, 1), h, 4);
+  document.head.appendChild(style);
+  document.body.appendChild(_overlayEl);
 }
 
 function drawDataOverlay(level) {
-  push();
-  resetMatrix();
+  if (!_overlayInitialized) _initOverlay();
+  if (!_overlayEl) return;
 
-  // Sharp text rendering
-  drawingContext.textRendering = 'geometricPrecision';
-  textFont('monospace');
-  textSize(12);
-  textAlign(LEFT, BASELINE);
-  noStroke();
+  // Update visibility based on level
+  document.getElementById('row-arousal').classList.toggle('hidden', level < 2);
+  document.getElementById('row-valence').classList.toggle('hidden', level < 2);
+  document.getElementById('row-proximity').classList.toggle('hidden', level < 3);
 
-  const x = 18;
-  let y = 28;
-  const barW = 170;
-  const gap = 18;
-
-  drawBarRow("BPM", nf(data.bpm, 3, 0), map(constrain(data.bpm, 40, 140), 40, 140, 0, 1), x, y, barW);
+  // Update BPM
+  document.getElementById('val-bpm').textContent = Math.round(data.bpm);
+  const bpmFrac = map(constrain(data.bpm, 40, 140), 40, 140, 0, 100);
+  document.getElementById('fill-bpm').style.width = bpmFrac + '%';
 
   if (level >= 2) {
-    y += gap;
-    drawBarRow("Arousal", nf(data.arousal, 1, 2), data.arousal, x, y, barW);
+    // Update Arousal
+    document.getElementById('val-arousal').textContent = data.arousal.toFixed(2);
+    document.getElementById('fill-arousal').style.width = (data.arousal * 100) + '%';
 
-    y += gap;
+    // Update Valence
     const v = constrain(data.valence, -1, 1);
-
-    fill(0, 0, 96, 0.85);
-    text("Valence", x, y);
-    fill(0, 0, 96, 0.7);
-    text(nf(v, 1, 2), x + 64, y);
-
-    const bx = x + 112;
-    const by = y - 10;
-    const h = 8;
-
-    fill(0, 0, 96, 0.14);
-    rect(bx, by, barW, h, 4);
-
-    fill(0, 0, 96, 0.22);
-    rect(bx + barW / 2 - 1, by, 2, h, 1);
-
-    const half = barW / 2;
-    const mag = abs(v) * half;
-
-    if (v >= 0) fill(340, 35, 94, 0.58);
-    else fill(0, 85, 40, 0.60);
-
-    if (v >= 0) rect(bx + half, by, mag, h, 4);
-    else rect(bx + half - mag, by, mag, h, 4);
+    document.getElementById('val-valence').textContent = v.toFixed(2);
+    const vMag = Math.abs(v) * 50;
+    if (v >= 0) {
+      document.getElementById('fill-valence-pos').style.width = vMag + '%';
+      document.getElementById('fill-valence-neg').style.width = '0%';
+    } else {
+      document.getElementById('fill-valence-pos').style.width = '0%';
+      document.getElementById('fill-valence-neg').style.width = vMag + '%';
+    }
   }
 
   if (level >= 3) {
-    y += gap;
-    drawBarRow("Proximity", nf(data.proximity, 1, 2), data.proximity, x, y, barW);
+    // Update Proximity
+    document.getElementById('val-proximity').textContent = data.proximity.toFixed(2);
+    document.getElementById('fill-proximity').style.width = (data.proximity * 100) + '%';
   }
+}
 
-  pop();
+// Show/hide overlay
+function setOverlayVisible(visible) {
+  if (!_overlayInitialized) _initOverlay();
+  if (_overlayEl) {
+    _overlayEl.style.display = visible ? 'block' : 'none';
+  }
 }
