@@ -142,72 +142,50 @@ function drawClouds(arr, col, alpha, t) {
     if (c.life < 0.02) continue;
 
     const arousal = c.arousal || 0.2;
-
-    // Curve points: fewer at low arousal (smoother), more at high (detailed distortion)
-    const n = floor(lerp(10, 20, pow(arousal, 0.6)));
     const a = alpha * c.life;
+
+    // More points for smoother curves
+    const n = floor(lerp(16, 24, pow(arousal, 0.6)));
 
     // Precompute curve points with arousal-driven distortion
     const pts = [];
     for (let i = 0; i < n; i++) {
       const ang = (TWO_PI * i) / n;
 
-      // Wobble speed increases with arousal
+      // Continuous noise sampling around the circle
       const wobbleSpeed = lerp(0.10, 0.32, arousal);
       const wobble = noise(
-        cos(ang) + 1 + c.seed,
-        sin(ang) + 1 + c.seed * 0.33,
+        c.seed + cos(ang) * 2,
+        c.seed * 0.5 + sin(ang) * 2,
         t * wobbleSpeed * c.morphSpeed
       );
 
-      // Distortion range increases with arousal
-      const baseShape = lerp(0.82, 0.65, arousal);  // More irregular at high arousal
+      const baseShape = lerp(0.82, 0.65, arousal);
       const distortRange = lerp(0.40, 1.0, arousal);
       const rr = c.baseR * (baseShape + distortRange * wobble * (0.80 + c.morphAmp));
 
       pts.push({
         x: c.x + cos(ang) * rr,
-        y: c.y + sin(ang) * rr * 0.92
+        y: c.y + sin(ang) * rr
       });
     }
 
-    // Outer glow layers - softer at low arousal, more defined at high
-    const glowIntensity = lerp(0.7, 1.2, arousal);
-    const glow = [
-      { sc: 1.28, ga: a * 0.03 * glowIntensity, db: 16 },
-      { sc: 1.18, ga: a * 0.07 * glowIntensity, db: 11 },
-      { sc: 1.10, ga: a * 0.14 * glowIntensity, db: 7 },
-      { sc: 1.04, ga: a * 0.26 * glowIntensity, db: 3 },
-    ];
-    for (const g of glow) {
-      fill(col.h, max(0, col.s - 8), min(100, col.b + g.db), g.ga);
-      _cloudCurve(pts, c.x, c.y, n, g.sc);
-    }
-
-    // Main body with canvas glow
-    const blurAmount = lerp(28, 16, arousal); // Softer blur at low arousal
-    const gc = color(col.h, max(0, col.s - 5), min(100, col.b + 10));
-    gc.setAlpha(a * 0.45);
-    drawingContext.shadowBlur = blurAmount;
-    drawingContext.shadowColor = gc.toString();
+    // Clean solid fill
     fill(col.h, col.s, col.b, a);
     _cloudCurve(pts, c.x, c.y, n, 1.0);
-    drawingContext.shadowBlur = 0;
-
-    // Inner luminous core
-    fill(col.h, max(0, col.s - 16), min(100, col.b + 15), a * 0.15);
-    _cloudCurve(pts, c.x, c.y, n, 0.52);
   }
 }
 
-// Closed Catmull-Rom curve
+// Closed Catmull-Rom curve with proper seamless closure
 function _cloudCurve(pts, cx, cy, n, sc) {
-  const px = i => cx + (pts[i].x - cx) * sc;
-  const py = i => cy + (pts[i].y - cy) * sc;
+  // Helper to get point with wrapping index
+  const getX = i => cx + (pts[((i % n) + n) % n].x - cx) * sc;
+  const getY = i => cy + (pts[((i % n) + n) % n].y - cy) * sc;
+
   beginShape();
-  curveVertex(px(n - 1), py(n - 1));
-  for (let i = 0; i < n; i++) curveVertex(px(i), py(i));
-  curveVertex(px(0), py(0));
-  curveVertex(px(1), py(1));
-  endShape(CLOSE);
+  // Wrap around: start from -2 to n+2 for smooth closure
+  for (let i = -2; i <= n + 2; i++) {
+    curveVertex(getX(i), getY(i));
+  }
+  endShape();
 }
