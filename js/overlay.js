@@ -3,28 +3,33 @@
 ========================================================= */
 
 function drawBarRow(label, valueText, frac, x, y, barW) {
-  fill(0, 0, 96, 0.68);
+  // Higher opacity for sharper text
+  fill(0, 0, 96, 0.85);
   text(label, x, y);
 
-  fill(0, 0, 96, 0.55);
-  text(valueText, x + 64, y);
+  fill(0, 0, 96, 0.7);
+  text(valueText, x + 72, y);
 
-  const bx = x + 112;
+  const bx = x + 120;
   const by = y - 10;
   const h = 8;
 
   fill(0, 0, 96, 0.14);
   rect(bx, by, barW, h, 4);
 
-  fill(0, 0, 96, 0.55);
+  fill(0, 0, 96, 0.6);
   rect(bx, by, barW * constrain(frac, 0, 1), h, 4);
 }
 
 function drawDataOverlay(level) {
   push();
   resetMatrix();
+
+  // Sharp text rendering
+  drawingContext.textRendering = 'geometricPrecision';
   textFont('monospace');
   textSize(12);
+  textAlign(LEFT, BASELINE);
   noStroke();
 
   const x = 18;
@@ -41,9 +46,9 @@ function drawDataOverlay(level) {
     y += gap;
     const v = constrain(data.valence, -1, 1);
 
-    fill(0, 0, 96, 0.68);
+    fill(0, 0, 96, 0.85);
     text("Valence", x, y);
-    fill(0, 0, 96, 0.55);
+    fill(0, 0, 96, 0.7);
     text(nf(v, 1, 2), x + 64, y);
 
     const bx = x + 112;
@@ -68,7 +73,7 @@ function drawDataOverlay(level) {
 
   if (level >= 3) {
     y += gap;
-    drawBarRow("Proxim", nf(data.proximity, 1, 2), data.proximity, x, y, barW);
+    drawBarRow("Proximity", nf(data.proximity, 1, 2), data.proximity, x, y, barW);
   }
 
   pop();
