@@ -1,0 +1,560 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Heart Pulse — Dev Mode</title>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
+    <style>
+      body { margin: 0; overflow: hidden; background: #0e0e12; }
+
+      /* ── Toggle tab ── */
+      #dev-toggle {
+        position: fixed; top: 12px; left: 12px; z-index: 1001;
+        width: 36px; height: 36px; border-radius: 8px;
+        background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18);
+        color: #fff; font-size: 18px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        backdrop-filter: blur(6px); transition: background 0.15s;
+      }
+      #dev-toggle:hover { background: rgba(255,255,255,0.22); }
+
+      /* ── Panel ── */
+      #dev-panel {
+        position: fixed; top: 0; left: 0; bottom: 0; z-index: 1000;
+        width: 290px; background: rgba(12, 12, 18, 0.92);
+        backdrop-filter: blur(12px);
+        border-right: 1px solid rgba(255,255,255,0.08);
+        overflow-y: auto; padding: 56px 16px 20px;
+        font-family: -apple-system, 'Segoe UI', sans-serif;
+        color: #ccc; font-size: 12px;
+        transform: translateX(0); transition: transform 0.25s ease;
+      }
+      #dev-panel.hidden { transform: translateX(-100%); }
+      #dev-panel::-webkit-scrollbar { width: 4px; }
+      #dev-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+      /* ── Title ── */
+      .dev-title {
+        font-size: 13px; font-weight: 700; letter-spacing: 0.5px;
+        color: #fff; margin-bottom: 14px; text-transform: uppercase;
+      }
+      .dev-title span { color: #f76c8a; }
+
+      /* ── Transport ── */
+      .transport {
+        display: flex; align-items: center; gap: 8px;
+        margin-bottom: 8px;
+      }
+      .transport-btn {
+        width: 32px; height: 32px; border-radius: 6px;
+        background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+        color: #fff; font-size: 14px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: background 0.15s;
+      }
+      .transport-btn:hover { background: rgba(255,255,255,0.18); }
+      .transport-btn.active { background: rgba(247,108,138,0.25); border-color: rgba(247,108,138,0.4); }
+      #dev-time {
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-size: 14px; color: #fff; min-width: 90px;
+      }
+      #dev-stage-label {
+        font-size: 10px; color: rgba(255,255,255,0.45);
+        margin-left: auto; text-transform: uppercase; letter-spacing: 0.3px;
+      }
+
+      /* ── Scrubber ── */
+      .scrubber { margin-bottom: 14px; }
+      .scrubber input[type="range"] {
+        -webkit-appearance: none; width: 100%; height: 6px;
+        background: rgba(255,255,255,0.1); border-radius: 3px; outline: none;
+      }
+      .scrubber input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none; width: 14px; height: 14px;
+        background: #f76c8a; border-radius: 50%; cursor: pointer;
+        border: 2px solid rgba(255,255,255,0.3);
+      }
+      .scrubber-labels {
+        display: flex; justify-content: space-between;
+        font-size: 9px; color: rgba(255,255,255,0.3); margin-top: 3px;
+      }
+
+      /* ── Speed ── */
+      .speed-row {
+        display: flex; gap: 4px; margin-bottom: 16px;
+      }
+      .speed-btn {
+        flex: 1; padding: 4px 0; border-radius: 4px;
+        background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);
+        color: #999; font-size: 11px; cursor: pointer;
+        text-align: center; transition: all 0.15s;
+      }
+      .speed-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+      .speed-btn.active {
+        background: rgba(247,108,138,0.18); border-color: rgba(247,108,138,0.35);
+        color: #f76c8a; font-weight: 600;
+      }
+
+      /* ── Divider ── */
+      .dev-divider {
+        height: 1px; background: rgba(255,255,255,0.06);
+        margin: 12px 0;
+      }
+
+      /* ── Section headers ── */
+      .section-hdr {
+        font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
+        text-transform: uppercase; color: rgba(255,255,255,0.35);
+        margin: 12px 0 8px;
+      }
+      .section-sub {
+        font-size: 10px; color: rgba(255,255,255,0.22);
+        margin: 8px 0 6px; font-style: italic;
+      }
+
+      /* ── Jump buttons ── */
+      .jump-grid {
+        display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px;
+      }
+      .jump-btn {
+        padding: 4px 10px; border-radius: 4px;
+        background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
+        color: #aaa; font-size: 11px; cursor: pointer;
+        transition: all 0.15s; white-space: nowrap;
+      }
+      .jump-btn:hover { background: rgba(255,255,255,0.14); color: #fff; }
+      .jump-btn.current {
+        background: rgba(247,108,138,0.20); border-color: rgba(247,108,138,0.35);
+        color: #f76c8a;
+      }
+      .jump-btn .time-hint {
+        font-size: 9px; color: rgba(255,255,255,0.25); margin-left: 4px;
+      }
+
+      /* ── Keyboard hints ── */
+      .kbd-hints {
+        margin-top: 12px; padding-top: 10px;
+        border-top: 1px solid rgba(255,255,255,0.06);
+        font-size: 10px; color: rgba(255,255,255,0.25); line-height: 1.8;
+      }
+      .kbd-hints kbd {
+        display: inline-block; padding: 1px 5px; border-radius: 3px;
+        background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+        font-family: monospace; font-size: 10px; color: rgba(255,255,255,0.5);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Load the original sketch -->
+    <script src="sketch.js"></script>
+
+    <!-- Dev mode overlay -->
+    <script>
+    (function() {
+      /* ============================================================
+         TIME MAP — precompute all jump targets from CFG
+      ============================================================ */
+      const t1 = CFG.stage.age;
+      const t2 = t1 + CFG.stage.emotion;
+      const t3 = t2 + CFG.stage.relationship;
+      const t4 = t3 + CFG.stage.deathTransition + CFG.stage.deathHold + CFG.stage.deathFade;
+
+      // Stage 1 sub-steps
+      const ageSteps = [];
+      let acc = 0;
+      for (const seg of AGE_SEGMENTS) {
+        ageSteps.push({ label: seg.name, t: acc });
+        acc += seg.d;
+      }
+
+      // Stage 2 sub-steps
+      const emoSteps = [];
+      acc = t1;
+      for (const seg of EMO_TIMELINE) {
+        emoSteps.push({ label: seg.emo, t: acc });
+        acc += seg.d;
+      }
+
+      // Stage 3 sub-steps
+      const relSteps = [];
+      acc = t2;
+      for (let ri = 0; ri < REL_SCRIPTS.length; ri++) {
+        const phases = [];
+        for (const phase of REL_SCRIPTS[ri]) {
+          phases.push({ label: phase.emo, t: acc });
+          acc += phase.d;
+        }
+        relSteps.push({ idx: ri, broken: ri < 2, phases });
+      }
+
+      // Stage 4 sub-steps
+      const deathSteps = [
+        { label: "transition", t: t3 },
+        { label: "hold",       t: t3 + CFG.stage.deathTransition },
+        { label: "fade",       t: t3 + CFG.stage.deathTransition + CFG.stage.deathHold }
+      ];
+
+      /* ============================================================
+         DEV STATE
+      ============================================================ */
+      let _devPaused = false;
+      let _devSpeed  = 1;
+      let _devPrevMs = null;
+      let _devPanelVisible = true;
+
+      // All jump buttons for highlighting
+      let _jumpBtns = [];
+
+      /* ============================================================
+         HOOK INTO P5 LIFECYCLE
+      ============================================================ */
+      const _origSetup = window.setup;
+      const _origDraw  = window.draw;
+      const _origKey   = window.keyPressed;
+
+      window.setup = function() {
+        _origSetup();
+        showData = true;
+        _devPrevMs = millis();
+        _buildPanel();
+      };
+
+      window.draw = function() {
+        const now = millis();
+        if (_devPrevMs === null) _devPrevMs = now;
+        const realDelta = now - _devPrevMs;
+        _devPrevMs = now;
+
+        if (_devPaused) {
+          startTime += realDelta;
+          _updatePanel();
+          return;
+        }
+
+        if (_devSpeed !== 1) {
+          const wanted = realDelta * _devSpeed;
+          startTime -= (wanted - realDelta);
+        }
+
+        _origDraw();
+        _updatePanel();
+      };
+
+      window.keyPressed = function() {
+        if (key === ' ') { _togglePause(); return; }
+        if (key === 'h' || key === 'H') { _togglePanel(); return; }
+        _origKey();
+      };
+
+      /* ============================================================
+         JUMP TO TIME
+      ============================================================ */
+      function _jumpTo(targetSec) {
+        stopped = false;
+        _devPaused = false;
+        loop();
+
+        startTime = millis() - targetSec * 1000;
+        _devPrevMs = millis();
+        lastFrameTime = targetSec;
+        ecgScroll = 0;
+
+        data = { bpm: 72, arousal: 0.2, valence: 0.5, proximity: 0 };
+
+        initSelfClouds();
+        initStage2Field();
+
+        if (targetSec < t1) {
+          initStage2(0);
+          initStage3(0);
+        } else if (targetSec < t2) {
+          initStage2(targetSec - t1);
+          initStage3(0);
+        } else if (targetSec < t3) {
+          initStage2(CFG.stage.emotion);
+          _ffStage3(targetSec - t2);
+        } else {
+          initStage2(CFG.stage.emotion);
+          _ffStage3(CFG.stage.relationship);
+        }
+      }
+
+      /* fast-forward Stage 3 relationship state machine */
+      function _ffStage3(targetLocal) {
+        relIdx = 0; relPhaseIdx = 0; relPhaseEnd = 0; rel = null;
+        proximity = 0;
+        partnerAlive = false; partnerClouds = [];
+        partnerHoverUntil = 0; partnerEntered = true; partnerBirthTime = 0;
+        partnerLeaving = false; partnerLeaveStart = 0; partnerLeaveAlpha = 1.0;
+        partnerTesting = false;
+
+        let cum = 0;
+        for (let ri = 0; ri < REL_SCRIPTS.length; ri++) {
+          const script = REL_SCRIPTS[ri];
+          for (let pi = 0; pi < script.length; pi++) {
+            const phase = script[pi];
+            const end = cum + phase.d;
+
+            if (targetLocal < end) {
+              relIdx = ri;
+              relPhaseIdx = pi + 1;
+              relPhaseEnd = end;
+
+              if (phase.emo === "reset") {
+                rel = { emoName: "reset", valence: 0.0, arousal: 0.12 };
+                partnerAlive = false; partnerClouds = [];
+              } else {
+                const emo = findEmotion(phase.emo);
+                rel = {
+                  emoName: phase.emo,
+                  valence: (emo.v[0] + emo.v[1]) / 2,
+                  arousal: (emo.a[0] + emo.a[1]) / 2
+                };
+                partnerAlive = true; partnerEntered = true;
+                partnerTesting = false; partnerHoverUntil = 0;
+                partnerBirthTime = cum;
+
+                partnerClouds = [];
+                for (let i = 0; i < 4; i++) {
+                  const c = makeCloud(
+                    width * 0.54 + (Math.random() - 0.5) * 160,
+                    height * 0.52 + (Math.random() - 0.5) * 120
+                  );
+                  c.life = 1.0;
+                  partnerClouds.push(c);
+                }
+                proximity = lerp(0.16, 0.55, ri / 2);
+
+                if (phase.emo === "grief" && ri < 2) {
+                  partnerLeaving = true;
+                  partnerLeaveStart = cum;
+                }
+              }
+              return;
+            }
+            cum = end;
+          }
+        }
+
+        // Past all scripts
+        relIdx = REL_SCRIPTS.length; relPhaseIdx = 0; relPhaseEnd = 1e9;
+        rel = { emoName: "comfort", valence: 0.58, arousal: 0.18 };
+        proximity = 0.70; partnerAlive = true; partnerEntered = true;
+        partnerClouds = [];
+        for (let i = 0; i < 4; i++) {
+          const c = makeCloud(
+            width * 0.54 + (Math.random() - 0.5) * 160,
+            height * 0.52 + (Math.random() - 0.5) * 120
+          );
+          c.life = 1.0;
+          partnerClouds.push(c);
+        }
+      }
+
+      /* ============================================================
+         TRANSPORT CONTROLS
+      ============================================================ */
+      function _togglePause() {
+        _devPaused = !_devPaused;
+        if (!_devPaused && stopped) { stopped = false; loop(); }
+        if (!_devPaused) { _devPrevMs = millis(); loop(); }
+        _updatePauseBtn();
+      }
+
+      function _setSpeed(s) {
+        _devSpeed = s;
+        document.querySelectorAll('.speed-btn').forEach(b => {
+          b.classList.toggle('active', parseFloat(b.dataset.speed) === s);
+        });
+      }
+
+      function _togglePanel() {
+        _devPanelVisible = !_devPanelVisible;
+        document.getElementById('dev-panel').classList.toggle('hidden', !_devPanelVisible);
+      }
+
+      function _updatePauseBtn() {
+        const btn = document.getElementById('dev-pause');
+        if (btn) btn.textContent = _devPaused ? '\u25B6' : '\u275A\u275A';
+      }
+
+      /* ============================================================
+         FORMAT TIME
+      ============================================================ */
+      function _fmtTime(sec) {
+        const m = Math.floor(sec / 60);
+        const s = Math.floor(sec % 60);
+        return m + ':' + (s < 10 ? '0' : '') + s;
+      }
+
+      function _getCurrentTime() {
+        return (millis() - startTime) / 1000;
+      }
+
+      function _getStageName(t) {
+        if (t < t1) return 'Age';
+        if (t < t2) return 'Emotion';
+        if (t < t3) return 'Relationship';
+        if (t < t4) return 'Death';
+        return 'End';
+      }
+
+      /* ============================================================
+         UPDATE PANEL (called every frame)
+      ============================================================ */
+      function _updatePanel() {
+        const t = _getCurrentTime();
+        const timeEl = document.getElementById('dev-time');
+        const stageEl = document.getElementById('dev-stage-label');
+        const slider = document.getElementById('dev-scrubber');
+
+        if (timeEl) timeEl.textContent = _fmtTime(t) + ' / ' + _fmtTime(t4);
+        if (stageEl) stageEl.textContent = _getStageName(t);
+        if (slider && !slider._dragging) slider.value = t;
+
+        // Highlight current jump button
+        let currentIdx = -1;
+        for (let i = _jumpBtns.length - 1; i >= 0; i--) {
+          if (t >= _jumpBtns[i].t) { currentIdx = i; break; }
+        }
+        for (let i = 0; i < _jumpBtns.length; i++) {
+          _jumpBtns[i].el.classList.toggle('current', i === currentIdx);
+        }
+      }
+
+      /* ============================================================
+         BUILD DOM
+      ============================================================ */
+      function _buildPanel() {
+        // Toggle button
+        const toggle = document.createElement('button');
+        toggle.id = 'dev-toggle';
+        toggle.innerHTML = '&#9776;';
+        toggle.onclick = _togglePanel;
+        document.body.appendChild(toggle);
+
+        // Panel
+        const panel = document.createElement('div');
+        panel.id = 'dev-panel';
+        document.body.appendChild(panel);
+
+        let html = '';
+
+        // Title
+        html += '<div class="dev-title"><span>\u2665</span> Heart Pulse &mdash; Dev</div>';
+
+        // Transport
+        html += '<div class="transport">';
+        html += '  <button class="transport-btn" id="dev-pause" title="Space to toggle">\u275A\u275A</button>';
+        html += '  <div id="dev-time">0:00 / ' + _fmtTime(t4) + '</div>';
+        html += '  <div id="dev-stage-label">Age</div>';
+        html += '</div>';
+
+        // Scrubber
+        html += '<div class="scrubber">';
+        html += '  <input type="range" id="dev-scrubber" min="0" max="' + t4.toFixed(1) + '" step="0.5" value="0">';
+        html += '  <div class="scrubber-labels"><span>0:00</span><span>' + _fmtTime(t4) + '</span></div>';
+        html += '</div>';
+
+        // Speed
+        html += '<div class="speed-row">';
+        [0.25, 0.5, 1, 2, 4, 8].forEach(s => {
+          const cls = s === 1 ? 'speed-btn active' : 'speed-btn';
+          html += '<button class="' + cls + '" data-speed="' + s + '">' + s + 'x</button>';
+        });
+        html += '</div>';
+
+        html += '<div class="dev-divider"></div>';
+
+        // Stage 1
+        html += '<div class="section-hdr">Stage 1 &mdash; Age</div>';
+        html += '<div class="jump-grid">';
+        for (const step of ageSteps) {
+          html += _jumpBtnHtml(step.label, step.t);
+        }
+        html += '</div>';
+
+        html += '<div class="dev-divider"></div>';
+
+        // Stage 2
+        html += '<div class="section-hdr">Stage 2 &mdash; Emotion</div>';
+        html += '<div class="jump-grid">';
+        for (const step of emoSteps) {
+          html += _jumpBtnHtml(step.label, step.t);
+        }
+        html += '</div>';
+
+        html += '<div class="dev-divider"></div>';
+
+        // Stage 3
+        html += '<div class="section-hdr">Stage 3 &mdash; Relationship</div>';
+        for (const rel of relSteps) {
+          const tag = rel.broken ? 'broken' : 'lasting';
+          html += '<div class="section-sub">Rel ' + (rel.idx + 1) + ' (' + tag + ')</div>';
+          html += '<div class="jump-grid">';
+          for (const p of rel.phases) {
+            html += _jumpBtnHtml(p.label, p.t);
+          }
+          html += '</div>';
+        }
+
+        html += '<div class="dev-divider"></div>';
+
+        // Stage 4
+        html += '<div class="section-hdr">Stage 4 &mdash; Death</div>';
+        html += '<div class="jump-grid">';
+        for (const step of deathSteps) {
+          html += _jumpBtnHtml(step.label, step.t);
+        }
+        html += '</div>';
+
+        // Keyboard hints
+        html += '<div class="kbd-hints">';
+        html += '  <kbd>Space</kbd> pause / resume<br>';
+        html += '  <kbd>H</kbd> toggle panel<br>';
+        html += '  <kbd>D</kbd> toggle data overlay<br>';
+        html += '  <kbd>R</kbd> restart<br>';
+        html += '</div>';
+
+        panel.innerHTML = html;
+
+        // Wire up events
+        document.getElementById('dev-pause').onclick = _togglePause;
+
+        panel.querySelectorAll('.speed-btn').forEach(btn => {
+          btn.onclick = () => _setSpeed(parseFloat(btn.dataset.speed));
+        });
+
+        const scrubber = document.getElementById('dev-scrubber');
+        scrubber.addEventListener('mousedown', () => { scrubber._dragging = true; });
+        scrubber.addEventListener('touchstart', () => { scrubber._dragging = true; });
+        scrubber.addEventListener('input', () => {
+          _jumpTo(parseFloat(scrubber.value));
+          _devPaused = true;
+          _updatePauseBtn();
+        });
+        scrubber.addEventListener('mouseup', () => { scrubber._dragging = false; });
+        scrubber.addEventListener('touchend', () => { scrubber._dragging = false; });
+        scrubber.addEventListener('change', () => { scrubber._dragging = false; });
+
+        // Collect jump buttons for highlighting
+        _jumpBtns = [];
+        panel.querySelectorAll('.jump-btn').forEach(el => {
+          const t = parseFloat(el.dataset.t);
+          el.onclick = () => _jumpTo(t);
+          _jumpBtns.push({ el, t });
+        });
+        _jumpBtns.sort((a, b) => a.t - b.t);
+      }
+
+      function _jumpBtnHtml(label, t) {
+        return '<button class="jump-btn" data-t="' + t.toFixed(1) + '">'
+          + label
+          + '<span class="time-hint">' + _fmtTime(t) + '</span>'
+          + '</button>';
+      }
+
+    })();
+    </script>
+  </body>
+</html>
