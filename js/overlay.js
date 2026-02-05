@@ -44,13 +44,13 @@ function _initOverlay() {
   style.textContent = `
     #data-overlay {
       position: fixed;
-      top: 16px;
-      left: 16px;
+      top: 14px;
+      left: 14px;
       z-index: 100;
       font-family: "SF Mono", "Fira Code", "Consolas", "Monaco", monospace;
-      font-size: 13px;
+      font-size: 11px;
       line-height: 1;
-      color: rgba(255, 255, 255, 0.92);
+      color: rgba(255, 255, 255, 0.88);
       pointer-events: none;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
@@ -58,35 +58,35 @@ function _initOverlay() {
     #data-overlay .row {
       display: flex;
       align-items: center;
-      margin-bottom: 8px;
-      height: 16px;
+      margin-bottom: 6px;
+      height: 14px;
     }
     #data-overlay .row.hidden {
       display: none;
     }
     #data-overlay .label {
-      width: 72px;
-      color: rgba(255, 255, 255, 0.88);
+      width: 62px;
+      color: rgba(255, 255, 255, 0.82);
       font-weight: 500;
     }
     #data-overlay .value {
-      width: 48px;
-      color: rgba(255, 255, 255, 0.7);
+      width: 42px;
+      color: rgba(255, 255, 255, 0.65);
       text-align: right;
-      margin-right: 12px;
+      margin-right: 10px;
     }
     #data-overlay .bar {
-      width: 160px;
-      height: 10px;
-      background: rgba(255, 255, 255, 0.12);
-      border-radius: 5px;
+      width: 110px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
       position: relative;
       overflow: hidden;
     }
     #data-overlay .fill {
       height: 100%;
-      background: rgba(255, 255, 255, 0.55);
-      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 4px;
       transition: width 0.1s ease-out;
     }
     #data-overlay .valence-bar .center-line {
@@ -94,17 +94,17 @@ function _initOverlay() {
       left: 50%;
       top: 0;
       bottom: 0;
-      width: 2px;
-      margin-left: -1px;
-      background: rgba(255, 255, 255, 0.3);
+      width: 1px;
+      margin-left: -0.5px;
+      background: rgba(255, 255, 255, 0.28);
     }
     #data-overlay .fill-pos {
       position: absolute;
       left: 50%;
       top: 0;
       height: 100%;
-      background: rgba(247, 150, 180, 0.7);
-      border-radius: 0 5px 5px 0;
+      background: rgba(247, 150, 180, 0.65);
+      border-radius: 0 4px 4px 0;
       transition: width 0.1s ease-out;
     }
     #data-overlay .fill-neg {
@@ -112,8 +112,8 @@ function _initOverlay() {
       right: 50%;
       top: 0;
       height: 100%;
-      background: rgba(200, 90, 90, 0.7);
-      border-radius: 5px 0 0 5px;
+      background: rgba(200, 90, 90, 0.65);
+      border-radius: 4px 0 0 4px;
       transition: width 0.1s ease-out;
     }
   `;
