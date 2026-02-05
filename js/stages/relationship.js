@@ -1,6 +1,10 @@
 /* =========================================================
    STAGE 3 - RELATIONSHIP
    Two cloud formations representing self and partner
+
+   Visual mapping:
+   - |valence| -> cloud count per entity
+   - arousal -> movement intensity, spread, distortion
 ========================================================= */
 
 function initStage3(stage3LocalT) {
@@ -84,12 +88,15 @@ function enterNewPartner(stage3T) {
   partnerClouds = [];
   const side = random() < 0.5 ? -1 : 1;
 
+  // Start with base clouds, will adjust based on valence
   for (let i = 0; i < 4; i++) {
     const x = side < 0 ? random(-820, -560) : random(width + 560, width + 820);
     const y = random(height * 0.30, height * 0.80);
-    partnerClouds.push(makeCloud(x, y));
+    const c = makeCloud(x, y);
+    c.life = 0.01; // Fade in
+    c.targetLife = 1;
+    partnerClouds.push(c);
   }
-  for (let c of partnerClouds) c.life = 1.0;
 
   proximity = lerp(0.16, 0.30, relIdx / 2);
 }
@@ -120,11 +127,12 @@ function stageRelationship(t) {
     v = 0;
     aRaw = 0.12;
   } else {
-    v = constrain(rel.valence + smoothNoise(t, 700 + relIdx * 33 + relPhaseIdx, 0.06) * 0.07, -1, 1);
-    aRaw = clamp01(rel.arousal + smoothNoise(t, 900 + relIdx * 33 + relPhaseIdx, 0.08) * 0.06);
+    v = constrain(rel.valence + smoothNoise(t, 700 + relIdx * 33 + relPhaseIdx, 0.06) * 0.08, -1, 1);
+    aRaw = clamp01(rel.arousal + smoothNoise(t, 900 + relIdx * 33 + relPhaseIdx, 0.08) * 0.07);
   }
 
-  const aVis = pow(aRaw, 2.8);
+  const aVis = pow(aRaw, 2.2);
+  const absV = abs(v);
 
   // Proximity dynamics
   let proxVel = 0;
@@ -148,9 +156,10 @@ function stageRelationship(t) {
   // Hover/testing + approach
   if (partnerAlive) {
     if (stage3T < partnerHoverUntil) {
+      const hoverIntensity = lerp(0.3, 0.8, aRaw);
       for (let c of partnerClouds) {
-        c.x += sin(t * 0.40 + c.seed) * 0.40;
-        c.y += cos(t * 0.36 + c.seed) * 0.30;
+        c.x += sin(t * 0.40 + c.seed) * hoverIntensity;
+        c.y += cos(t * 0.36 + c.seed) * hoverIntensity * 0.75;
       }
     } else {
       partnerEntered = true;
@@ -174,16 +183,17 @@ function stageRelationship(t) {
   const selfCol = inPre ? white : lerpColorHSB(lightPink, emotionCol, 0.88);
   const selfAlpha = inPre ? 0.12 : alphaFromValence(v, emoName, 0.26);
 
-  setCloudMass(selfClouds, abs(v));
+  // |valence| controls cloud count, arousal controls dynamics
+  setCloudMass(selfClouds, absV, aRaw);
   applyCloudDynamicsNoShake(selfClouds, aRaw, aVis, t, true);
   drawClouds(selfClouds, selfCol, selfAlpha * stage3Fade, t);
 
   // Partner clouds
   if (partnerAlive) {
-    setCloudMass(partnerClouds, abs(v) * 1.05);
+    setCloudMass(partnerClouds, absV * 1.05, aRaw);
 
     if (partnerEntered && !partnerLeaving) {
-      movePartnerTowardSelfTesting(proximity, t);
+      movePartnerTowardSelfTesting(proximity, t, aRaw);
     }
 
     applyCloudDynamicsNoShake(partnerClouds, aRaw, aVis, t, false);
@@ -202,7 +212,8 @@ function stageRelationship(t) {
       const sx = width * 0.54;
       const sy = height * 0.52;
 
-      const retreatSpd = 0.62;
+      // Retreat speed influenced by arousal (grief has low arousal = slow retreat)
+      const retreatSpd = lerp(0.4, 0.9, aRaw);
       for (let c of partnerClouds) {
         const dx = c.x - sx;
         const dy = c.y - sy;
@@ -251,14 +262,19 @@ function partnerColorBlend(stage3T, emoName, emotionCol) {
   return lerpColorHSB(mid, emotionCol, pinkToEmo);
 }
 
-function movePartnerTowardSelfTesting(prox, t) {
+function movePartnerTowardSelfTesting(prox, t, arousal) {
   const tx = width * 0.54;
   const ty = height * 0.52;
 
+  // Approach speed influenced by arousal
+  const baseK = lerp(0.0018, 0.005, arousal) + 0.003 * prox;
+
   for (let c of partnerClouds) {
-    const baseK = 0.0022 + 0.0044 * prox;
-    const hes = 0.55 * exp(-0.05 * max(0, (t * 1.0))) * (sin(t * 0.7 + c.seed) * 0.5);
-    c.x = lerp(c.x, tx + sin(c.seed) * 44 + hes * 18, baseK);
-    c.y = lerp(c.y, ty + cos(c.seed) * 30 + hes * 10, baseK);
+    // Hesitation wobble - more pronounced at high arousal
+    const hesAmp = lerp(0.3, 0.8, arousal);
+    const hes = hesAmp * exp(-0.05 * max(0, t)) * sin(t * 0.7 + c.seed);
+
+    c.x = lerp(c.x, tx + sin(c.seed) * 44 + hes * 20, baseK);
+    c.y = lerp(c.y, ty + cos(c.seed) * 30 + hes * 12, baseK);
   }
 }
