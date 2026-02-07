@@ -53,8 +53,8 @@ function stageAge(t, dt) {
   const bpm = computeBPM(p.bpmBase, arousalRaw, 0, t, 11.7);
   updateData(bpm, arousalRaw, valence, 0);
 
-  // ECG scroll ramp: start slower, ramp to 1.0 by ~60% of stage
-  const scrollMul = lerp(0.62, 1.0, easeOutCubic(clamp01(u / 0.60)));
+  // ECG scroll - SLOWED DOWN for realistic ECG speed (25mm/s equivalent)
+  const scrollMul = lerp(0.25, 0.40, easeOutCubic(clamp01(u / 0.60)));
   ecgScroll += (data.bpm / 60) * dt * scrollMul;
   if (ecgScroll > 1e6) ecgScroll = ecgScroll % 1;
 
@@ -62,8 +62,8 @@ function stageAge(t, dt) {
   const flashA = CFG.heartFlash.stage1 * lerp(1.0, 0.75, easeInOutQuad(u));
   drawHeartFlash(t, data.bpm, flashA, arousalRaw, false);
 
-  // ECG line
-  const lineAlpha = lerp(0.50, 0.10, easeInOutQuad(u));
-  const weight = lerp(6.2, 4.2, easeInOutQuad(u));
-  drawECGLineIntegrated(t, p.sharp, p.jitter, lineAlpha, weight);
+  // ECG line - MORE OPAQUE and THICKER
+  const lineAlpha = lerp(0.85, 0.50, easeInOutQuad(u));
+  const weight = lerp(9.0, 6.5, easeInOutQuad(u));
+  drawECGLineIntegrated(t, p.sharp, 0, lineAlpha, weight);
 }

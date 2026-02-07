@@ -21,8 +21,9 @@ function stageDeath(t) {
   const partnerFade = smoothstep(0.34, 0.78, uTrans);
   const flatten = smoothstep(0.30, 1.00, uTrans);
 
-  const wSelf = lerp(6.0, 1.8, flatten);
-  const wPartner = lerp(5.4, 1.4, partnerFade);
+  // THICKER weights
+  const wSelf = lerp(9.0, 3.0, flatten);
+  const wPartner = lerp(8.0, 2.5, partnerFade);
 
   const ampSelf = (inHold || inFade) ? 0 : lerp(66, 0, flatten);
   const ampPartner = (inHold || inFade) ? 0 : ampSelf * (1 - partnerFade);
@@ -33,7 +34,8 @@ function stageDeath(t) {
     fadeOut = 1 - smoothstep(0, 1, u);
   }
 
-  const aBase = 0.22 * fadeOut * ecgIn;
+  // MORE OPAQUE alpha
+  const aBase = 0.45 * fadeOut * ecgIn;
   const aSelf = aBase;
   const aPartner = aBase * (1 - partnerFade);
 

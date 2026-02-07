@@ -1,5 +1,6 @@
 /* =========================================================
    ECG - Electrocardiogram rendering
+   Stable line, no dots, realistic speed
 ========================================================= */
 
 function gauss(x, mu, sigma) {
@@ -19,35 +20,37 @@ function ecgShape(phase, sharp = 1.0) {
   return qrs + tWave;
 }
 
-// Stage 1 ECG with integrated scroll
+// Stage 1 ECG - stable, no jitter, round caps to prevent dots
 function drawECGLineIntegrated(t, sharp, jitterAmt, alpha01, weight) {
   const y0 = height * 0.52;
   stroke(0, 0, 96, alpha01);
   strokeWeight(weight);
+  strokeCap(ROUND);
+  strokeJoin(ROUND);
   noFill();
 
   beginShape();
-  for (let x = 0; x <= width; x += 4) {
+  for (let x = 0; x <= width; x += 2) {
     const u = x / width;
     const phase = (u * 3.0 + ecgScroll) % 1;
-    const base = sin(u * TWO_PI * 1.0 + t * 0.22) * 3;
-    const jit = (noise(u * 3.0, t * 0.25) - 0.5) * jitterAmt;
-    const y = y0 + base + jit - ecgShape(phase, sharp) * 48;
+    const y = y0 - ecgShape(phase, sharp) * 48;
     vertex(x, y);
   }
   endShape();
   noStroke();
 }
 
-// Stage 4 ECG trace
+// Stage 4 ECG trace - round caps to prevent dots
 function drawECGTrace(t, bpm, y0, col, alpha, weight, amp) {
   stroke(col.h, col.s, col.b, alpha);
   strokeWeight(weight);
+  strokeCap(ROUND);
+  strokeJoin(ROUND);
   noFill();
 
   beginShape();
   const windowBeats = 3.0;
-  for (let x = 0; x <= width; x += 5) {
+  for (let x = 0; x <= width; x += 2) {
     const u = x / width;
     const phase = (u * windowBeats + (t * bpm) / 60) % 1;
     const y = y0 - ecgShape(phase, 1.15) * amp;
