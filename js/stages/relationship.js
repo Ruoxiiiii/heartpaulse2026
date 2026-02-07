@@ -5,7 +5,17 @@
    Visual mapping:
    - |valence| -> cloud count per entity
    - arousal -> movement intensity, spread, distortion
+   - proximity -> distance between clouds (0=far, 1=close)
+
+   Proximity rules:
+   - Always starts from 0
+   - Comfort: 0.4 (1st) -> 0.5 (2nd) -> 0.6 (3rd/final)
+   - Excited, Anxious, Fear: 0.7
+   - Grief: decreases toward 0.2
 ========================================================= */
+
+// Track comfort occurrences for progressive proximity
+let comfortCount = 0;
 
 function initStage3(stage3LocalT) {
   relIdx = 0;
@@ -14,6 +24,7 @@ function initStage3(stage3LocalT) {
   rel = null;
 
   proximity = 0;
+  comfortCount = 0;
   partnerAlive = false;
   partnerClouds = [];
   partnerHoverUntil = 0;
@@ -38,7 +49,8 @@ function advanceRelPhase(stage3T) {
     relPhaseIdx = 0;
 
     if (relIdx >= REL_SCRIPTS.length) {
-      rel = { emoName: "comfort", valence: 0.58, arousal: 0.18 };
+      rel = { emoName: "comfort", valence: 0.52, arousal: 0.22 };
+      comfortCount++;
       relPhaseEnd = 1e9;
       return;
     }
@@ -67,7 +79,14 @@ function advanceRelPhase(stage3T) {
     arousal: randRange(emo.a[0], emo.a[1])
   };
 
+  // IMPORTANT: Enter new partner BEFORE tracking comfort count
+  // so comfortCount isn't reset after being incremented
   if (!partnerAlive) enterNewPartner(stage3T);
+
+  // Track comfort count for progressive proximity (after partner setup)
+  if (phase.emo === "comfort") {
+    comfortCount++;
+  }
 
   relPhaseEnd = stage3T + phase.d;
   relPhaseIdx++;
@@ -85,20 +104,45 @@ function enterNewPartner(stage3T) {
   partnerLeaveStart = 0;
   partnerLeaveAlpha = 1.0;
 
+  // Always start proximity from 0 for new relationship
+  proximity = 0;
+  // NOTE: comfortCount is NOT reset here - it accumulates across all relationships
+
   partnerClouds = [];
   const side = random() < 0.5 ? -1 : 1;
 
-  // Start with base clouds, will adjust based on valence
   for (let i = 0; i < 4; i++) {
     const x = side < 0 ? random(-820, -560) : random(width + 560, width + 820);
     const y = random(height * 0.30, height * 0.80);
     const c = makeCloud(x, y);
-    c.life = 0.01; // Fade in
+    c.life = 0.01;
     c.targetLife = 1;
     partnerClouds.push(c);
   }
+}
 
-  proximity = lerp(0.16, 0.30, relIdx / 2);
+// Get target proximity based on emotion
+// Comfort: 0.4 -> 0.5 -> 0.6 (progressive)
+// Excited, Anxious, Fear: 0.7
+function getTargetProximity(emoName) {
+  switch (emoName) {
+    case "comfort":
+      if (comfortCount <= 1) return 0.40;
+      if (comfortCount === 2) return 0.50;
+      return 0.60;
+    case "excited":
+      return 0.70;
+    case "anxious":
+      return 0.70;
+    case "fear":
+      return 0.70;
+    case "grief":
+      return 0.20;
+    case "reset":
+      return 0;
+    default:
+      return 0.40;
+  }
 }
 
 function stageRelationship(t) {
@@ -115,9 +159,8 @@ function stageRelationship(t) {
   const safetyWindow = 12.0;
   if (stage3T > CFG.stage.relationship - safetyWindow) {
     rel.emoName = "comfort";
-    rel.valence = 0.58;
-    rel.arousal = 0.18;
-    proximity = lerp(proximity, 0.70, 0.012);
+    rel.valence = 0.52;
+    rel.arousal = 0.22;
   }
 
   let emoName = rel.emoName;
@@ -134,24 +177,11 @@ function stageRelationship(t) {
   const aVis = pow(aRaw, 2.2);
   const absV = abs(v);
 
-  // Proximity dynamics
-  let proxVel = 0;
-  const maturity = clamp01(relIdx / 2);
-
-  if (!partnerAlive) proxVel = -0.020;
-  else if (emoName === "reset") proxVel = -0.030;
-  else if (emoName === "grief") proxVel = -0.030;
-  else if (emoName === "comfort") proxVel = +0.010;
-  else if (emoName === "excited") proxVel = +0.014;
-  else if (emoName === "anxious") proxVel = +0.012;
-  else if (emoName === "fear") proxVel = lerp(-0.010, +0.006, maturity);
-
-  proximity = constrain(proximity + proxVel * 0.020, 0, 1);
-
-  const isFinal = (relIdx === 2);
-  if (isFinal && emoName === "comfort") {
-    proximity = lerp(proximity, 0.70, 0.004);
-  }
+  // Proximity dynamics - smoothly move toward target value
+  const targetProx = getTargetProximity(emoName);
+  const proxSpeed = 0.05;  // Fast enough to see changes clearly
+  proximity = lerp(proximity, targetProx, proxSpeed);
+  proximity = constrain(proximity, 0, 1);
 
   // Hover/testing + approach
   if (partnerAlive) {
@@ -183,7 +213,6 @@ function stageRelationship(t) {
   const selfCol = inPre ? white : lerpColorHSB(lightPink, emotionCol, 0.88);
   const selfAlpha = inPre ? 0.12 : alphaFromValence(v, emoName, 0.26);
 
-  // |valence| controls cloud count, arousal controls dynamics
   setCloudMass(selfClouds, absV, aRaw);
   applyCloudDynamicsNoShake(selfClouds, aRaw, aVis, t, true);
   drawClouds(selfClouds, selfCol, selfAlpha * stage3Fade, t);
@@ -193,7 +222,7 @@ function stageRelationship(t) {
     setCloudMass(partnerClouds, absV * 1.05, aRaw);
 
     if (partnerEntered && !partnerLeaving) {
-      movePartnerTowardSelfTesting(proximity, t, aRaw);
+      movePartnerByProximity(proximity, t, aRaw);
     }
 
     applyCloudDynamicsNoShake(partnerClouds, aRaw, aVis, t, false);
@@ -212,7 +241,6 @@ function stageRelationship(t) {
       const sx = width * 0.54;
       const sy = height * 0.52;
 
-      // Retreat speed influenced by arousal (grief has low arousal = slow retreat)
       const retreatSpd = lerp(0.4, 0.9, aRaw);
       for (let c of partnerClouds) {
         const dx = c.x - sx;
@@ -262,19 +290,31 @@ function partnerColorBlend(stage3T, emoName, emotionCol) {
   return lerpColorHSB(mid, emotionCol, pinkToEmo);
 }
 
-function movePartnerTowardSelfTesting(prox, t, arousal) {
-  const tx = width * 0.54;
-  const ty = height * 0.52;
+// Move partner clouds based on proximity value
+// proximity 0 = far apart (450px), proximity 1 = very close (50px)
+function movePartnerByProximity(prox, t, arousal) {
+  // Self clouds center around width * 0.46
+  const selfCenterX = width * 0.46;
+  const selfCenterY = height * 0.52;
 
-  // Approach speed influenced by arousal
-  const baseK = lerp(0.0018, 0.005, arousal) + 0.003 * prox;
+  // Distance based on proximity: higher proximity = closer clouds
+  const maxDist = 450;  // Distance when proximity = 0
+  const minDist = 50;   // Distance when proximity = 1
+  const targetDist = lerp(maxDist, minDist, prox);
+
+  // Partner position to the right of self
+  const partnerTargetX = selfCenterX + targetDist;
+  const partnerTargetY = selfCenterY;
+
+  // Movement speed - faster at higher arousal
+  const baseK = lerp(0.012, 0.025, arousal);
 
   for (let c of partnerClouds) {
-    // Hesitation wobble - more pronounced at high arousal
-    const hesAmp = lerp(0.3, 0.8, arousal);
-    const hes = hesAmp * exp(-0.05 * max(0, t)) * sin(t * 0.7 + c.seed);
+    // Individual cloud offset for natural cluster look
+    const offsetX = sin(c.seed) * 40;
+    const offsetY = cos(c.seed) * 30;
 
-    c.x = lerp(c.x, tx + sin(c.seed) * 44 + hes * 20, baseK);
-    c.y = lerp(c.y, ty + cos(c.seed) * 30 + hes * 12, baseK);
+    c.x = lerp(c.x, partnerTargetX + offsetX, baseK);
+    c.y = lerp(c.y, partnerTargetY + offsetY, baseK);
   }
 }
