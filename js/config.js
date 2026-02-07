@@ -42,13 +42,15 @@ const AGE_SEGMENTS = [
   { name: "elder",  d: 6,  bpmBase: 68,  sharp: 1.05, jitter: 4  }
 ];
 
-// Emotions with valence/arousal ranges
+// Emotions with valence/arousal ranges (based on Russell's Circumplex Model)
+// Valence: -1 (unpleasant) to +1 (pleasant)
+// Arousal: 0 (deactivated/calm) to 1 (activated/aroused)
 const EMOTIONS = [
-  { name: "comfort", v: [+0.35, +0.70], a: [0.10, 0.30] },
-  { name: "excited", v: [+0.55, +0.95], a: [0.75, 0.95] },
-  { name: "anxious", v: [-0.70, -0.35], a: [0.60, 0.85] },
-  { name: "fear",    v: [-0.92, -0.60], a: [0.85, 1.00] },
-  { name: "grief",   v: [-0.55, -0.20], a: [0.05, 0.25] }
+  { name: "comfort", v: [+0.40, +0.65], a: [0.15, 0.35] },  // Pleasant, calm
+  { name: "excited", v: [+0.60, +0.85], a: [0.65, 0.85] },  // Pleasant, high arousal
+  { name: "anxious", v: [-0.50, -0.30], a: [0.55, 0.75] },  // Unpleasant, moderate-high arousal
+  { name: "fear",    v: [-0.80, -0.60], a: [0.75, 0.92] },  // Very unpleasant, very high arousal
+  { name: "grief",   v: [-0.60, -0.40], a: [0.12, 0.30] }   // Unpleasant, low arousal (sadness)
 ];
 
 // Stage 2 emotion timeline
