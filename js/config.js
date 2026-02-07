@@ -85,12 +85,9 @@ const REL_SCRIPTS = [
     { emo: "comfort", d: 7 },
     { emo: "excited", d: 5 },
     { emo: "anxious", d: 6 },
-    { emo: "fear",    d: 5 },
-    { emo: "anxious", d: 5 },
     { emo: "comfort", d: 6 },
     { emo: "anxious", d: 5 },
-    { emo: "comfort", d: 8 },
-    { emo: "anxious", d: 4 },
+    { emo: "fear",    d: 5 },
     { emo: "comfort", d: 14 }
   ]
 ];
