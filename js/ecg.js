@@ -20,10 +20,12 @@ function ecgShape(phase, sharp = 1.0) {
   return qrs + tWave;
 }
 
-// Stage 1 ECG - stable, no jitter, round caps to prevent dots
+// Stage 1 ECG - solid line using globalAlpha to prevent overdraw artifacts
 function drawECGLineIntegrated(t, sharp, jitterAmt, alpha01, weight) {
   const y0 = height * 0.52;
-  stroke(0, 0, 96, alpha01);
+
+  drawingContext.globalAlpha = alpha01;
+  stroke(0, 0, 96);
   strokeWeight(weight);
   strokeCap(ROUND);
   strokeJoin(ROUND);
@@ -37,12 +39,15 @@ function drawECGLineIntegrated(t, sharp, jitterAmt, alpha01, weight) {
     vertex(x, y);
   }
   endShape();
+
+  drawingContext.globalAlpha = 1.0;
   noStroke();
 }
 
-// Stage 4 ECG trace - round caps to prevent dots
+// Stage 4 ECG trace - solid line using globalAlpha to prevent overdraw artifacts
 function drawECGTrace(t, bpm, y0, col, alpha, weight, amp) {
-  stroke(col.h, col.s, col.b, alpha);
+  drawingContext.globalAlpha = alpha;
+  stroke(col.h, col.s, col.b);
   strokeWeight(weight);
   strokeCap(ROUND);
   strokeJoin(ROUND);
@@ -57,5 +62,7 @@ function drawECGTrace(t, bpm, y0, col, alpha, weight, amp) {
     vertex(x, y);
   }
   endShape();
+
+  drawingContext.globalAlpha = 1.0;
   noStroke();
 }
