@@ -17,7 +17,7 @@ function pulseEnvelope(t, bpm) {
 
 function drawHeartFlash(t, bpm, stageScale, arousalRaw, bigMode = false) {
   const env = pulseEnvelope(t, bpm);
-  if (env < 0.001) return;
+  if (env < 0.15) return;
 
   const x0 = width * CFG.heart.anchorX;
   const y0 = height * CFG.heart.anchorY;
@@ -28,7 +28,7 @@ function drawHeartFlash(t, bpm, stageScale, arousalRaw, bigMode = false) {
   const baseA = CFG.heart.baseAlpha * stageScale * e;
 
   const rMax = max(width, height) * 0.16;
-  const rMin = 8;
+  const rMin = 0;
   const r0 = lerp(rMin, rMax, pow(e, 0.55));
 
   const wob = 0.68 + 0.32 * noise(2000 + t * 0.9);

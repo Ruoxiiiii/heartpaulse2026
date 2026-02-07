@@ -27,6 +27,7 @@ function setup() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  noiseLayer = null;
 }
 
 function keyPressed() {
@@ -78,4 +79,7 @@ function draw() {
     stopped = true;
     noLoop();
   }
+
+  // Film grain overlay - high ISO photography effect
+  drawFilmGrain(0.15);
 }
