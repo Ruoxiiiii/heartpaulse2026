@@ -12,9 +12,9 @@ const CFG = {
     baseAlpha: 0.18
   },
 
-  // Heart flash visibility by stage (Stage 1 big; 2-3 subtle; 4 faint)
+  // Heart flash visibility by stage (Stage 1 subtle but visible; 2-4 faint)
   heartFlash: {
-    stage1: 0.70,
+    stage1: 0.35,
     stage2: 0.12,
     stage3: 0.14,
     stage4: 0.07
