@@ -37,6 +37,14 @@ function _initOverlay() {
       <span class="value" id="val-proximity">0.00</span>
       <div class="bar"><div class="fill" id="fill-proximity"></div></div>
     </div>
+    <div class="emotion-ref" id="emotion-ref">
+      <div class="ref-title">Affect Reference</div>
+      <div class="ref-row"><span class="emo-name">Comfort</span><span class="emo-range">V +0.4~+0.65 &nbsp; A 0.15~0.35</span></div>
+      <div class="ref-row"><span class="emo-name">Excited</span><span class="emo-range">V +0.6~+0.85 &nbsp; A 0.65~0.85</span></div>
+      <div class="ref-row"><span class="emo-name">Anxious</span><span class="emo-range">V −0.5~−0.3 &nbsp; A 0.55~0.75</span></div>
+      <div class="ref-row"><span class="emo-name">Fear</span><span class="emo-range">V −0.8~−0.6 &nbsp; A 0.75~0.92</span></div>
+      <div class="ref-row"><span class="emo-name">Grief</span><span class="emo-range">V −0.6~−0.4 &nbsp; A 0.12~0.3</span></div>
+    </div>
   `;
 
   // Add styles
@@ -116,6 +124,35 @@ function _initOverlay() {
       border-radius: 4px 0 0 4px;
       transition: width 0.1s ease-out;
     }
+    #data-overlay .emotion-ref {
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    #data-overlay .emotion-ref.hidden {
+      display: none;
+    }
+    #data-overlay .ref-title {
+      font-size: 9px;
+      color: rgba(255, 255, 255, 0.45);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    #data-overlay .ref-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 3px;
+      font-size: 10px;
+    }
+    #data-overlay .emo-name {
+      color: rgba(255, 255, 255, 0.55);
+      width: 56px;
+    }
+    #data-overlay .emo-range {
+      color: rgba(255, 255, 255, 0.35);
+      font-size: 9px;
+    }
   `;
 
   document.head.appendChild(style);
@@ -130,6 +167,7 @@ function drawDataOverlay(level) {
   document.getElementById('row-arousal').classList.toggle('hidden', level < 2);
   document.getElementById('row-valence').classList.toggle('hidden', level < 2);
   document.getElementById('row-proximity').classList.toggle('hidden', level < 3);
+  document.getElementById('emotion-ref').classList.toggle('hidden', level < 2);
 
   // Update BPM
   document.getElementById('val-bpm').textContent = Math.round(data.bpm);
