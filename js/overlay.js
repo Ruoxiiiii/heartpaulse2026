@@ -103,7 +103,7 @@ function _initOverlay() {
       left: 50%;
       top: 0;
       height: 100%;
-      background: rgba(247, 150, 180, 0.65);
+      background: rgba(255, 255, 255, 0.5);
       border-radius: 0 4px 4px 0;
       transition: width 0.1s ease-out;
     }
@@ -112,7 +112,7 @@ function _initOverlay() {
       right: 50%;
       top: 0;
       height: 100%;
-      background: rgba(200, 90, 90, 0.65);
+      background: rgba(255, 255, 255, 0.5);
       border-radius: 4px 0 0 4px;
       transition: width 0.1s ease-out;
     }
