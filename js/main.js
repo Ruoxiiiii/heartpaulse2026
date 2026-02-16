@@ -5,6 +5,7 @@
 
    Controls:
    - D: Toggle data overlay
+   - M: Toggle audio (mute/unmute)
    - R: Restart
 ========================================================= */
 
@@ -32,6 +33,7 @@ function windowResized() {
 
 function keyPressed() {
   if (key === "d" || key === "D") showData = !showData;
+  if (key === "m" || key === "M") toggleAudio();
   if (key === "r" || key === "R") restart();
 }
 
@@ -64,21 +66,30 @@ function draw() {
   const t2 = t1 + CFG.stage.emotion;
   const t3 = t2 + CFG.stage.relationship;
 
+  let currentStage = 1;
+
   if (t < t1) {
     stageAge(t, dt);
     if (showData) drawDataOverlay(1);
+    currentStage = 1;
   } else if (t < t2) {
     stageEmotion(t);
     if (showData) drawDataOverlay(2);
+    currentStage = 2;
   } else if (t < t3) {
     stageRelationship(t);
     if (showData) drawDataOverlay(3);
+    currentStage = 3;
   } else if (t < TOTAL) {
     stageDeath(t);
+    currentStage = 4;
   } else {
     stopped = true;
     noLoop();
   }
+
+  // Update audio to match visual mood
+  updateAudio(data.bpm, data.arousal, data.valence, data.proximity, currentStage);
 
   // Film grain overlay - high ISO photography effect
   drawFilmGrain(0.15);
