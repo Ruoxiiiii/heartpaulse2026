@@ -169,7 +169,7 @@ function _createTexture() {
   _textureNoise.loop = true;
 
   _textureGain = _audioCtx.createGain();
-  _textureGain.gain.value = 0.02;
+  _textureGain.gain.value = 0.03;
 
   _textureFilter = _audioCtx.createBiquadFilter();
   _textureFilter.type = 'bandpass';
@@ -328,8 +328,8 @@ function _updateTexture(now) {
   const v = _audioState.valence;
   const stage = _audioState.stage;
 
-  // Texture volume increases with arousal
-  let vol = 0.01 + a * 0.06;
+  // Texture volume increases with arousal (1.5x original)
+  let vol = 0.015 + a * 0.09;
   if (stage === 1) vol *= 0.2;
   if (stage === 4) vol *= 0.1;
 
@@ -363,7 +363,7 @@ function _scheduleHeartbeats(now) {
 
     // Heartbeat intensity varies by stage
     let intensity = 0.8;
-    if (stage === 1) intensity = 0.5 + (_audioState.arousal * 0.3);
+    if (stage === 1) intensity = 6.4; // 8x louder heartbeat in first stage
     if (stage === 4) intensity = Math.max(0.1, 1 - (_audioCtx.currentTime % 20) / 20);
 
     _triggerHeartbeat(_nextBeatTime, intensity);
