@@ -37,13 +37,17 @@ function _initOverlay() {
       <span class="value" id="val-proximity">0.00</span>
       <div class="bar"><div class="fill" id="fill-proximity"></div></div>
     </div>
-    <div class="emotion-ref" id="emotion-ref">
-      <div class="ref-title">Affect Reference</div>
-      <div class="ref-row"><span class="emo-name">Comfort</span><span class="emo-range">V +0.4~+0.65 &nbsp; A 0.15~0.35</span></div>
-      <div class="ref-row"><span class="emo-name">Excited</span><span class="emo-range">V +0.6~+0.85 &nbsp; A 0.65~0.85</span></div>
-      <div class="ref-row"><span class="emo-name">Anxious</span><span class="emo-range">V −0.5~−0.3 &nbsp; A 0.55~0.75</span></div>
-      <div class="ref-row"><span class="emo-name">Fear</span><span class="emo-range">V −0.8~−0.6 &nbsp; A 0.75~0.92</span></div>
-      <div class="ref-row"><span class="emo-name">Grief</span><span class="emo-range">V −0.6~−0.4 &nbsp; A 0.12~0.3</span></div>
+    <div class="emotion-table" id="emotion-table">
+      <div class="emo-header">
+        <span class="emo-col-name">Emotion</span>
+        <span class="emo-col-val">Valence</span>
+        <span class="emo-col-aro">Arousal</span>
+      </div>
+      <div class="emo-data">
+        <span class="emo-col-name" id="emo-name">Comfort</span>
+        <span class="emo-col-val" id="emo-valence">+0.4~+0.65</span>
+        <span class="emo-col-aro" id="emo-arousal">0.15~0.35</span>
+      </div>
     </div>
   `;
 
@@ -124,34 +128,37 @@ function _initOverlay() {
       border-radius: 4px 0 0 4px;
       transition: width 0.1s ease-out;
     }
-    #data-overlay .emotion-ref {
-      margin-top: 14px;
+    #data-overlay .emotion-table {
+      margin-top: 12px;
       padding-top: 10px;
       border-top: 1px solid rgba(255, 255, 255, 0.12);
-    }
-    #data-overlay .emotion-ref.hidden {
-      display: none;
-    }
-    #data-overlay .ref-title {
-      font-size: 9px;
-      color: rgba(255, 255, 255, 0.45);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 6px;
-    }
-    #data-overlay .ref-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 3px;
       font-size: 10px;
     }
-    #data-overlay .emo-name {
-      color: rgba(255, 255, 255, 0.55);
-      width: 56px;
+    #data-overlay .emotion-table.hidden {
+      display: none;
     }
-    #data-overlay .emo-range {
-      color: rgba(255, 255, 255, 0.35);
-      font-size: 9px;
+    #data-overlay .emo-header {
+      display: flex;
+      color: rgba(255, 255, 255, 0.45);
+      margin-bottom: 4px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    #data-overlay .emo-data {
+      display: flex;
+      color: rgba(255, 255, 255, 0.70);
+    }
+    #data-overlay .emo-col-name {
+      width: 62px;
+      text-transform: capitalize;
+    }
+    #data-overlay .emo-col-val {
+      width: 80px;
+      text-align: center;
+    }
+    #data-overlay .emo-col-aro {
+      width: 70px;
+      text-align: center;
     }
   `;
 
@@ -167,7 +174,8 @@ function drawDataOverlay(level) {
   document.getElementById('row-arousal').classList.toggle('hidden', level < 2);
   document.getElementById('row-valence').classList.toggle('hidden', level < 2);
   document.getElementById('row-proximity').classList.toggle('hidden', level < 3);
-  document.getElementById('emotion-ref').classList.toggle('hidden', level < 2);
+  // Show emotion table only in stage 2
+  document.getElementById('emotion-table').classList.toggle('hidden', level !== 2);
 
   // Update BPM
   document.getElementById('val-bpm').textContent = Math.round(data.bpm);
@@ -189,6 +197,21 @@ function drawDataOverlay(level) {
     } else {
       document.getElementById('fill-valence-pos').style.width = '0%';
       document.getElementById('fill-valence-neg').style.width = vMag + '%';
+    }
+
+    // Update emotion table (stage 2 only)
+    if (level === 2 && s2 && s2.emoName) {
+      const emo = findEmotion(s2.emoName);
+      if (emo) {
+        document.getElementById('emo-name').textContent = s2.emoName;
+        const vSign = emo.v[0] >= 0 ? '+' : '-';
+        const vMin = Math.abs(emo.v[0]).toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+        const vMax = Math.abs(emo.v[1]).toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+        document.getElementById('emo-valence').textContent = `${vSign}${vMin}~${vSign}${vMax}`;
+        const aMin = emo.a[0].toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+        const aMax = emo.a[1].toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+        document.getElementById('emo-arousal').textContent = `${aMin}~${aMax}`;
+      }
     }
   }
 
