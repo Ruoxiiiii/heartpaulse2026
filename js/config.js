@@ -23,7 +23,7 @@ const CFG = {
   stage: {
     age: 18,
     emotion: 41,
-    relationship: 80,
+    relationship: 106,
     deathTransition: 20,
     deathHold: 12,
     deathFade: 4
@@ -64,31 +64,31 @@ const EMO_TIMELINE = [
 
 // Relationship scripts for Stage 3
 const REL_SCRIPTS = [
-  // Relationship 1 (broken)
+  // Relationship 1 (broken) - 34s
   [
-    { emo: "comfort", d: 4 },
-    { emo: "excited", d: 3 },
-    { emo: "anxious", d: 4 },
-    { emo: "fear",    d: 3 },
-    { emo: "grief",   d: 8 },
-    { emo: "reset",   d: 3 }
+    { emo: "comfort", d: 6 },
+    { emo: "excited", d: 6 },
+    { emo: "anxious", d: 6 },
+    { emo: "fear",    d: 6 },
+    { emo: "grief",   d: 5 },
+    { emo: "reset",   d: 5 }
   ],
-  // Relationship 2 (broken)
+  // Relationship 2 (broken) - 27s
   [
-    { emo: "comfort", d: 4 },
-    { emo: "excited", d: 3 },
-    { emo: "anxious", d: 8 },
-    { emo: "grief",   d: 7 },
-    { emo: "reset",   d: 3 }
+    { emo: "comfort", d: 6 },
+    { emo: "excited", d: 5 },
+    { emo: "anxious", d: 7 },
+    { emo: "grief",   d: 5 },
+    { emo: "reset",   d: 4 }
   ],
-  // Final relationship (lasting)
+  // Final relationship (lasting) - 45s
   [
-    { emo: "comfort", d: 4 },
-    { emo: "excited", d: 3 },
-    { emo: "anxious", d: 3 },
-    { emo: "comfort", d: 3 },
-    { emo: "anxious", d: 3 },
-    { emo: "fear",    d: 3 },
-    { emo: "comfort", d: 8 }
+    { emo: "comfort", d: 6 },
+    { emo: "excited", d: 6 },
+    { emo: "anxious", d: 7 },
+    { emo: "comfort", d: 6 },
+    { emo: "anxious", d: 5 },
+    { emo: "fear",    d: 5 },
+    { emo: "comfort", d: 10 }
   ]
 ];
