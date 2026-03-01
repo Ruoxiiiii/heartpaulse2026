@@ -113,6 +113,8 @@ function draw() {
     currentStage = 1;
     _heartbeatPaused = true;
     _audioPaused = true;
+    _overlayFade = 0;  // Hide overlay during break
+    if (showData) setOverlayOpacity(0);
   } else if (t < t2) {
     // Stage 2: Emotion (adjust time to account for break)
     const stage2T = t - b1;  // Time since stage 2 started
@@ -134,6 +136,8 @@ function draw() {
     currentStage = 2;
     _heartbeatPaused = true;
     _audioPaused = true;
+    _overlayFade = 0;  // Hide overlay during break
+    if (showData) setOverlayOpacity(0);
   } else if (t < t3) {
     // Stage 3: Relationship (adjust time to account for breaks)
     const stage3T = t - b2;  // Time since stage 3 started
