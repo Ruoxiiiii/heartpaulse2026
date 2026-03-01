@@ -602,7 +602,7 @@ function _scheduleHeartbeats(now) {
       const proxIntensity = 9.0 + prox * 4.5 + a * 4.5;
       intensity = _lerp(12.0, proxIntensity, blend);
     } else if (stage === 4) {
-      // Stage 4: Death progression - one dies (50%), then both die (no beats)
+      // Stage 4: Death - heartbeat fades as lines flatten, stops at flatline
       let timeSinceStart = now - _stage4StartTime;
 
       // Safety check - if stage4StartTime not set properly, use blend
@@ -610,21 +610,18 @@ function _scheduleHeartbeats(now) {
         timeSinceStart = blend * 36; // Estimate based on blend
       }
 
-      const transitionDur = 20;
-      const holdDur = 12;
+      // Line goes completely flat at 20s (matches visual flatline)
+      const flatlineTime = 20;
 
       // Start consistent with end of stage 3 - use high base intensity
       const baseIntensity = 15.0;
 
-      if (timeSinceStart < transitionDur) {
-        // One dies - drop to 50%
-        const dropProgress = Math.min(1, timeSinceStart / transitionDur);
-        intensity = baseIntensity * _lerp(1.0, 0.5, Math.pow(dropProgress, 0.5));
-      } else if (timeSinceStart < transitionDur + holdDur) {
-        // Hold at 50%
-        intensity = baseIntensity * 0.5;
+      if (timeSinceStart < flatlineTime) {
+        // Heartbeat fades as line flattens (synced with visual)
+        const flattenProgress = Math.min(1, timeSinceStart / flatlineTime);
+        intensity = baseIntensity * _lerp(1.0, 0, Math.pow(flattenProgress, 1.2));
       } else {
-        // Flatline - NO heartbeats at all
+        // Line is flat - NO heartbeats
         intensity = 0;
       }
     }

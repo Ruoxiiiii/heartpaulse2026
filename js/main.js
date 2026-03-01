@@ -21,6 +21,9 @@ let _onRecordingStop = null;  // Callback when recording stops
 let _heartbeatPaused = false;
 let _audioPaused = false;  // Full audio pause (drone, texture, heartbeat)
 
+// Overlay fade state (for stage 4 death fade)
+let _overlayFade = 1.0;
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
   pixelDensity(window.devicePixelRatio || 2); // Use display's native resolution for crisp text
@@ -93,11 +96,15 @@ function draw() {
   // Reset audio pause flags (will be set true during breaks/delays)
   _heartbeatPaused = false;
   _audioPaused = false;
+  _overlayFade = 1.0;
 
   if (t < t1) {
     // Stage 1: Age
     stageAge(t, dt);
-    if (showData) drawDataOverlay(1);
+    if (showData) {
+      setOverlayOpacity(1);
+      drawDataOverlay(1);
+    }
     currentStage = 1;
   } else if (t < b1) {
     // Break 1: Fade out stage 1, pause before stage 2
@@ -110,7 +117,10 @@ function draw() {
     // Stage 2: Emotion (adjust time to account for break)
     const stage2T = t - b1;  // Time since stage 2 started
     stageEmotion(t - brk);
-    if (showData) drawDataOverlay(2);
+    if (showData) {
+      setOverlayOpacity(1);
+      drawDataOverlay(2);
+    }
     currentStage = 2;
     // Audio delay: visual leads, audio follows
     if (stage2T < CFG.audioDelay) {
@@ -128,7 +138,10 @@ function draw() {
     // Stage 3: Relationship (adjust time to account for breaks)
     const stage3T = t - b2;  // Time since stage 3 started
     stageRelationship(t - 2 * brk);
-    if (showData) drawDataOverlay(3);
+    if (showData) {
+      setOverlayOpacity(1);
+      drawDataOverlay(3);
+    }
     currentStage = 3;
     // Audio delay: visual leads, audio follows
     if (stage3T < CFG.audioDelay) {
@@ -137,8 +150,23 @@ function draw() {
     }
   } else if (t < totalWithBreaks) {
     // Stage 4: Death (adjust time to account for breaks)
-    stageDeath(t - 2 * brk);
+    const adjustedT = t - 2 * brk;
+    stageDeath(adjustedT);
     currentStage = 4;
+
+    // Fade out data overlay as first person dies
+    const stage4T = adjustedT - (CFG.stage.age + CFG.stage.emotion + CFG.stage.relationship);
+    const fadeOutDur = 8.0;  // Fade over 8 seconds
+    _overlayFade = 1.0 - Math.min(1, stage4T / fadeOutDur);
+
+    if (showData) {
+      if (_overlayFade > 0.01) {
+        setOverlayOpacity(_overlayFade);
+        drawDataOverlay(3);  // Show full overlay (like stage 3) but fading
+      } else {
+        setOverlayOpacity(0);
+      }
+    }
   } else {
     stopped = true;
     noLoop();
@@ -151,8 +179,8 @@ function draw() {
   drawFilmGrain(0.15);
 
   // Draw data overlay on canvas when recording (HTML overlay won't be captured)
-  if (_isRecording) {
-    drawDataOverlayOnCanvas(currentStage);
+  if (_isRecording && _overlayFade > 0.01) {
+    drawDataOverlayOnCanvas(currentStage, _overlayFade);
   }
 }
 
@@ -187,13 +215,16 @@ function _ensureOverlayCanvas() {
 }
 
 // Draw data overlay directly on canvas for recording capture
-function drawDataOverlayOnCanvas(level) {
+function drawDataOverlayOnCanvas(level, fade = 1.0) {
   const { w, h } = _ensureOverlayCanvas();
   const ctx = _overlayCtx;
   const s = _overlayScale;
 
   // Clear
   ctx.clearRect(0, 0, w * s, h * s);
+
+  // Apply fade
+  ctx.globalAlpha = fade;
 
   // Scale up for high-res rendering
   ctx.save();
@@ -335,6 +366,7 @@ function drawDataOverlayOnCanvas(level) {
   }
 
   ctx.restore();
+  ctx.globalAlpha = 1.0;  // Reset alpha
 
   // Draw the high-res overlay canvas onto the main p5 canvas
   push();

@@ -229,3 +229,11 @@ function setOverlayVisible(visible) {
     _overlayEl.style.display = visible ? 'block' : 'none';
   }
 }
+
+// Set overlay opacity (for fade effects)
+function setOverlayOpacity(opacity) {
+  if (!_overlayInitialized) _initOverlay();
+  if (_overlayEl) {
+    _overlayEl.style.opacity = opacity;
+  }
+}
