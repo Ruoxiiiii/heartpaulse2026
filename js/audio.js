@@ -378,6 +378,9 @@ function updateAudio(bpm, arousal, valence, proximity, stage) {
 }
 
 function _updateDrone(now) {
+  // Check if audio is fully paused (breaks/transitions)
+  const audioPaused = (typeof _audioPaused !== 'undefined' && _audioPaused);
+
   const v = _audioState.valence;
   const a = _audioState.arousal;
   const stage = _audioState.stage;
@@ -456,6 +459,9 @@ function _updateDrone(now) {
     // Arousal affects volume intensity
     vol *= 0.5 + a * 0.6;
 
+    // Mute during audio pause
+    if (audioPaused) vol = 0;
+
     _droneGains[i].gain.setTargetAtTime(vol, now, 0.5);
   }
 
@@ -478,6 +484,9 @@ function _updateDrone(now) {
 }
 
 function _updateTexture(now) {
+  // Check if audio is fully paused (breaks/transitions)
+  const audioPaused = (typeof _audioPaused !== 'undefined' && _audioPaused);
+
   const a = _audioState.arousal;
   const v = _audioState.valence;
   const stage = _audioState.stage;
@@ -522,6 +531,9 @@ function _updateTexture(now) {
     vol *= 1.0 + Math.abs(v) * 0.5;
   }
 
+  // Mute during audio pause
+  if (audioPaused) vol = 0;
+
   _textureGain.gain.setTargetAtTime(vol, now, 0.5);
 
   // Filter frequency - emotional character
@@ -563,6 +575,12 @@ function _scheduleHeartbeats(now) {
   const blend = _audioState.stageBlend;
   const a = _audioState.arousal;
   const prox = _audioState.proximity;
+
+  // Check if heartbeat is paused (breaks between stages or reset phases)
+  if (typeof _heartbeatPaused !== 'undefined' && _heartbeatPaused) {
+    _nextBeatTime = now + 0.1; // Keep time moving but don't trigger beats
+    return;
+  }
 
   // Schedule beats ahead of time for precise timing
   while (_nextBeatTime < now + 0.1) {

@@ -27,11 +27,19 @@ const CFG = {
     deathTransition: 20,
     deathHold: 12,
     deathFade: 4
-  }
+  },
+
+  // Break duration between stages (simple fade to black)
+  breakDuration: 2.5,
+  // Audio delay after visual starts (visual leads, audio follows)
+  audioDelay: 0.8
 };
 
 const STAGE4 = CFG.stage.deathTransition + CFG.stage.deathHold + CFG.stage.deathFade;
+// TOTAL without breaks (used for stage timing calculations)
 const TOTAL = CFG.stage.age + CFG.stage.emotion + CFG.stage.relationship + STAGE4;
+// Total with breaks (for checking end of experience)
+const TOTAL_WITH_BREAKS = TOTAL + 2 * CFG.breakDuration;
 
 // Age segments (infant -> elder)
 const AGE_SEGMENTS = [

@@ -17,6 +17,10 @@ let _recordedChunks = [];
 let _onRecordingStart = null; // Callback when recording starts
 let _onRecordingStop = null;  // Callback when recording stops
 
+// Audio pause state (for breaks and audio delay after visual)
+let _heartbeatPaused = false;
+let _audioPaused = false;  // Full audio pause (drone, texture, heartbeat)
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
   pixelDensity(window.devicePixelRatio || 2); // Use display's native resolution for crisp text
@@ -76,26 +80,64 @@ function draw() {
   const dt = max(0, t - lastFrameTime);
   lastFrameTime = t;
 
+  const brk = CFG.breakDuration;
   const t1 = CFG.stage.age;
-  const t2 = t1 + CFG.stage.emotion;
-  const t3 = t2 + CFG.stage.relationship;
+  const b1 = t1 + brk;                    // Break 1 ends
+  const t2 = b1 + CFG.stage.emotion;
+  const b2 = t2 + brk;                    // Break 2 ends
+  const t3 = b2 + CFG.stage.relationship;
+  const totalWithBreaks = t3 + STAGE4;
 
   let currentStage = 1;
 
+  // Reset audio pause flags (will be set true during breaks/delays)
+  _heartbeatPaused = false;
+  _audioPaused = false;
+
   if (t < t1) {
+    // Stage 1: Age
     stageAge(t, dt);
     if (showData) drawDataOverlay(1);
     currentStage = 1;
+  } else if (t < b1) {
+    // Break 1: Fade out stage 1, pause before stage 2
+    const breakProgress = (t - t1) / brk;
+    drawBreak(breakProgress, 1);
+    currentStage = 1;
+    _heartbeatPaused = true;
+    _audioPaused = true;
   } else if (t < t2) {
-    stageEmotion(t);
+    // Stage 2: Emotion (adjust time to account for break)
+    const stage2T = t - b1;  // Time since stage 2 started
+    stageEmotion(t - brk);
     if (showData) drawDataOverlay(2);
     currentStage = 2;
+    // Audio delay: visual leads, audio follows
+    if (stage2T < CFG.audioDelay) {
+      _heartbeatPaused = true;
+      _audioPaused = true;
+    }
+  } else if (t < b2) {
+    // Break 2: Fade out stage 2, pause before stage 3
+    const breakProgress = (t - t2) / brk;
+    drawBreak(breakProgress, 2);
+    currentStage = 2;
+    _heartbeatPaused = true;
+    _audioPaused = true;
   } else if (t < t3) {
-    stageRelationship(t);
+    // Stage 3: Relationship (adjust time to account for breaks)
+    const stage3T = t - b2;  // Time since stage 3 started
+    stageRelationship(t - 2 * brk);
     if (showData) drawDataOverlay(3);
     currentStage = 3;
-  } else if (t < TOTAL) {
-    stageDeath(t);
+    // Audio delay: visual leads, audio follows
+    if (stage3T < CFG.audioDelay) {
+      _heartbeatPaused = true;
+      _audioPaused = true;
+    }
+  } else if (t < totalWithBreaks) {
+    // Stage 4: Death (adjust time to account for breaks)
+    stageDeath(t - 2 * brk);
     currentStage = 4;
   } else {
     stopped = true;
@@ -112,6 +154,12 @@ function draw() {
   if (_isRecording) {
     drawDataOverlayOnCanvas(currentStage);
   }
+}
+
+// Draw break between stages - simple pause with dark background
+function drawBreak(progress, fromStage) {
+  // Heartbeat is paused during breaks - just show dark background
+  // (background is already drawn at start of draw())
 }
 
 /* =========================================================
