@@ -205,101 +205,115 @@ function _createHeartbeat() {
 ============================================================ */
 
 function _triggerHeartbeat(time, intensity) {
-  if (!_audioCtx || !_audioEnabled) return;
+  if (!_audioCtx || !_audioEnabled || intensity <= 0) return;
 
-  // Deep, thick heartbeat like church organ bass - penetrating and resonant
-  const attackTime = 0.015;
-  const decayTime = 0.25; // Longer decay for resonance
-  const volume = 0.15 * intensity;
+  // Stethoscope heartbeat - muffled "lub-dub" through chest
+  const volume = 0.12 * intensity;
 
-  // === FIRST BEAT (LUB) - Deep, thick, layered ===
+  // Create a lowpass filter to simulate hearing through body tissue
+  const bodyFilter = _audioCtx.createBiquadFilter();
+  bodyFilter.type = 'lowpass';
+  bodyFilter.frequency.value = 150; // Muffled, like through stethoscope
+  bodyFilter.Q.value = 0.7;
+  bodyFilter.connect(_masterGain);
 
-  // Sub-bass foundation (you feel this in your chest)
-  const sub1 = _audioCtx.createOscillator();
-  const subGain1 = _audioCtx.createGain();
-  sub1.type = 'sine';
-  sub1.frequency.setValueAtTime(32, time); // Very deep
-  sub1.frequency.exponentialRampToValueAtTime(24, time + 0.2);
-  subGain1.gain.setValueAtTime(0, time);
-  subGain1.gain.linearRampToValueAtTime(volume * 2.0, time + attackTime);
-  subGain1.gain.exponentialRampToValueAtTime(0.001, time + decayTime);
-  sub1.connect(subGain1);
-  subGain1.connect(_masterGain);
-  sub1.start(time);
-  sub1.stop(time + 0.35);
+  // === S1 "LUB" - Mitral/Tricuspid valve closure ===
+  // Lower pitch, slightly longer, more prominent
+  const lub1 = _audioCtx.createOscillator();
+  const lubGain1 = _audioCtx.createGain();
+  lub1.type = 'sine';
+  lub1.frequency.setValueAtTime(45, time);
+  lub1.frequency.exponentialRampToValueAtTime(30, time + 0.08);
+  lubGain1.gain.setValueAtTime(0, time);
+  lubGain1.gain.linearRampToValueAtTime(volume * 1.8, time + 0.01);
+  lubGain1.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
+  lub1.connect(lubGain1);
+  lubGain1.connect(bodyFilter);
+  lub1.start(time);
+  lub1.stop(time + 0.15);
 
-  // Mid-bass body (thickness)
-  const mid1 = _audioCtx.createOscillator();
-  const midGain1 = _audioCtx.createGain();
-  mid1.type = 'sine';
-  mid1.frequency.setValueAtTime(55, time);
-  mid1.frequency.exponentialRampToValueAtTime(35, time + 0.15);
-  midGain1.gain.setValueAtTime(0, time);
-  midGain1.gain.linearRampToValueAtTime(volume * 1.5, time + attackTime);
-  midGain1.gain.exponentialRampToValueAtTime(0.001, time + decayTime * 0.8);
-  mid1.connect(midGain1);
-  midGain1.connect(_masterGain);
-  mid1.start(time);
-  mid1.stop(time + 0.3);
+  // Second harmonic for lub body
+  const lub2 = _audioCtx.createOscillator();
+  const lubGain2 = _audioCtx.createGain();
+  lub2.type = 'sine';
+  lub2.frequency.setValueAtTime(90, time);
+  lub2.frequency.exponentialRampToValueAtTime(55, time + 0.06);
+  lubGain2.gain.setValueAtTime(0, time);
+  lubGain2.gain.linearRampToValueAtTime(volume * 0.8, time + 0.008);
+  lubGain2.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+  lub2.connect(lubGain2);
+  lubGain2.connect(bodyFilter);
+  lub2.start(time);
+  lub2.stop(time + 0.12);
 
-  // Upper harmonic (warmth and presence)
-  const harm1 = _audioCtx.createOscillator();
-  const harmGain1 = _audioCtx.createGain();
-  harm1.type = 'sine';
-  harm1.frequency.setValueAtTime(110, time);
-  harm1.frequency.exponentialRampToValueAtTime(70, time + 0.12);
-  harmGain1.gain.setValueAtTime(0, time);
-  harmGain1.gain.linearRampToValueAtTime(volume * 0.6, time + attackTime);
-  harmGain1.gain.exponentialRampToValueAtTime(0.001, time + decayTime * 0.5);
-  harm1.connect(harmGain1);
-  harmGain1.connect(_reverbConvolver); // Send to reverb for church-like resonance
-  harm1.start(time);
-  harm1.stop(time + 0.2);
+  // Thump noise component (realistic valve sound)
+  const noiseBuffer = _audioCtx.createBuffer(1, _audioCtx.sampleRate * 0.05, _audioCtx.sampleRate);
+  const noiseData = noiseBuffer.getChannelData(0);
+  for (let i = 0; i < noiseData.length; i++) {
+    noiseData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (noiseData.length * 0.15));
+  }
+  const lubNoise = _audioCtx.createBufferSource();
+  lubNoise.buffer = noiseBuffer;
+  const lubNoiseGain = _audioCtx.createGain();
+  const lubNoiseFilter = _audioCtx.createBiquadFilter();
+  lubNoiseFilter.type = 'bandpass';
+  lubNoiseFilter.frequency.value = 60;
+  lubNoiseFilter.Q.value = 2;
+  lubNoiseGain.gain.value = volume * 0.5;
+  lubNoise.connect(lubNoiseFilter);
+  lubNoiseFilter.connect(lubNoiseGain);
+  lubNoiseGain.connect(bodyFilter);
+  lubNoise.start(time);
 
-  // === SECOND BEAT (DUB) - Slightly higher, still thick ===
-  const dubTime = time + 0.14;
+  // === S2 "DUB" - Aortic/Pulmonary valve closure ===
+  // Higher pitch, shorter, slightly softer
+  const dubTime = time + 0.12; // Short pause between lub and dub
 
-  // Sub-bass
-  const sub2 = _audioCtx.createOscillator();
-  const subGain2 = _audioCtx.createGain();
-  sub2.type = 'sine';
-  sub2.frequency.setValueAtTime(40, dubTime);
-  sub2.frequency.exponentialRampToValueAtTime(28, dubTime + 0.15);
-  subGain2.gain.setValueAtTime(0, dubTime);
-  subGain2.gain.linearRampToValueAtTime(volume * 1.4, dubTime + attackTime);
-  subGain2.gain.exponentialRampToValueAtTime(0.001, dubTime + decayTime * 0.7);
-  sub2.connect(subGain2);
-  subGain2.connect(_masterGain);
-  sub2.start(dubTime);
-  sub2.stop(dubTime + 0.25);
+  const dub1 = _audioCtx.createOscillator();
+  const dubGain1 = _audioCtx.createGain();
+  dub1.type = 'sine';
+  dub1.frequency.setValueAtTime(65, dubTime);
+  dub1.frequency.exponentialRampToValueAtTime(40, dubTime + 0.05);
+  dubGain1.gain.setValueAtTime(0, dubTime);
+  dubGain1.gain.linearRampToValueAtTime(volume * 1.2, dubTime + 0.008);
+  dubGain1.gain.exponentialRampToValueAtTime(0.001, dubTime + 0.07);
+  dub1.connect(dubGain1);
+  dubGain1.connect(bodyFilter);
+  dub1.start(dubTime);
+  dub1.stop(dubTime + 0.1);
 
-  // Mid-bass body
-  const mid2 = _audioCtx.createOscillator();
-  const midGain2 = _audioCtx.createGain();
-  mid2.type = 'sine';
-  mid2.frequency.setValueAtTime(70, dubTime);
-  mid2.frequency.exponentialRampToValueAtTime(45, dubTime + 0.12);
-  midGain2.gain.setValueAtTime(0, dubTime);
-  midGain2.gain.linearRampToValueAtTime(volume * 1.0, dubTime + attackTime);
-  midGain2.gain.exponentialRampToValueAtTime(0.001, dubTime + decayTime * 0.6);
-  mid2.connect(midGain2);
-  midGain2.connect(_masterGain);
-  mid2.start(dubTime);
-  mid2.stop(dubTime + 0.2);
+  // Second harmonic for dub
+  const dub2 = _audioCtx.createOscillator();
+  const dubGain2 = _audioCtx.createGain();
+  dub2.type = 'sine';
+  dub2.frequency.setValueAtTime(120, dubTime);
+  dub2.frequency.exponentialRampToValueAtTime(70, dubTime + 0.04);
+  dubGain2.gain.setValueAtTime(0, dubTime);
+  dubGain2.gain.linearRampToValueAtTime(volume * 0.5, dubTime + 0.006);
+  dubGain2.gain.exponentialRampToValueAtTime(0.001, dubTime + 0.05);
+  dub2.connect(dubGain2);
+  dubGain2.connect(bodyFilter);
+  dub2.start(dubTime);
+  dub2.stop(dubTime + 0.08);
 
-  // Upper harmonic with reverb
-  const harm2 = _audioCtx.createOscillator();
-  const harmGain2 = _audioCtx.createGain();
-  harm2.type = 'sine';
-  harm2.frequency.setValueAtTime(140, dubTime);
-  harm2.frequency.exponentialRampToValueAtTime(90, dubTime + 0.1);
-  harmGain2.gain.setValueAtTime(0, dubTime);
-  harmGain2.gain.linearRampToValueAtTime(volume * 0.4, dubTime + attackTime);
-  harmGain2.gain.exponentialRampToValueAtTime(0.001, dubTime + decayTime * 0.4);
-  harm2.connect(harmGain2);
-  harmGain2.connect(_reverbConvolver);
-  harm2.start(dubTime);
-  harm2.stop(dubTime + 0.15);
+  // Dub noise component
+  const dubNoise = _audioCtx.createBufferSource();
+  const dubNoiseBuffer = _audioCtx.createBuffer(1, _audioCtx.sampleRate * 0.03, _audioCtx.sampleRate);
+  const dubNoiseData = dubNoiseBuffer.getChannelData(0);
+  for (let i = 0; i < dubNoiseData.length; i++) {
+    dubNoiseData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (dubNoiseData.length * 0.12));
+  }
+  dubNoise.buffer = dubNoiseBuffer;
+  const dubNoiseGain = _audioCtx.createGain();
+  const dubNoiseFilter = _audioCtx.createBiquadFilter();
+  dubNoiseFilter.type = 'bandpass';
+  dubNoiseFilter.frequency.value = 80;
+  dubNoiseFilter.Q.value = 2;
+  dubNoiseGain.gain.value = volume * 0.35;
+  dubNoise.connect(dubNoiseFilter);
+  dubNoiseFilter.connect(dubNoiseGain);
+  dubNoiseGain.connect(bodyFilter);
+  dubNoise.start(dubTime);
 }
 
 /* ============================================================
