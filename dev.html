@@ -245,6 +245,16 @@
         showData = true;
         _devPrevMs = millis();
         _buildPanel();
+
+        // Set up recording callbacks to hide/show dev panel
+        _onRecordingStart = function() {
+          document.getElementById('dev-panel').style.display = 'none';
+          document.getElementById('dev-toggle').style.display = 'none';
+        };
+        _onRecordingStop = function() {
+          document.getElementById('dev-panel').style.display = '';
+          document.getElementById('dev-toggle').style.display = '';
+        };
       };
 
       window.draw = function() {
@@ -271,6 +281,15 @@
       window.keyPressed = function() {
         if (key === ' ') { _togglePause(); return; }
         if (key === 'h' || key === 'H') { _togglePanel(); return; }
+        // Override R key: recording instead of restart in dev mode
+        if (key === 'r' || key === 'R') {
+          if (keyIsDown(SHIFT)) {
+            restart();
+          } else {
+            toggleRecording();
+          }
+          return;
+        }
         _origKey();
       };
 
@@ -542,7 +561,8 @@
         html += '  <kbd>H</kbd> toggle panel<br>';
         html += '  <kbd>D</kbd> toggle data overlay<br>';
         html += '  <kbd>M</kbd> toggle audio<br>';
-        html += '  <kbd>R</kbd> restart<br>';
+        html += '  <kbd>R</kbd> start/stop recording<br>';
+        html += '  <kbd>Shift+R</kbd> restart<br>';
         html += '</div>';
 
         panel.innerHTML = html;
