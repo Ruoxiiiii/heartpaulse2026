@@ -44,7 +44,8 @@ let _audioState = {
   arousal: 0.2,
   valence: 0.5,
   proximity: 0,
-  stage: 1
+  stage: 1,
+  stageBlend: 0 // 0-1 blend factor for stage transitions
 };
 
 // Target state for smooth interpolation
@@ -55,6 +56,14 @@ let _targetState = {
   proximity: 0,
   stage: 1
 };
+
+// Track stage transition timing
+let _lastStage = 1;
+let _stageTransitionStart = 0;
+const _stageTransitionDuration = 3.0; // seconds for smooth transition
+
+// Stage 4 death timing (from config)
+let _stage4StartTime = 0;
 
 /* ============================================================
    INITIALIZATION
@@ -198,41 +207,99 @@ function _createHeartbeat() {
 function _triggerHeartbeat(time, intensity) {
   if (!_audioCtx || !_audioEnabled) return;
 
-  // Two-part heartbeat: "lub-dub"
-  const attackTime = 0.02;
-  const decayTime = 0.08;
+  // Deep, thick heartbeat like church organ bass - penetrating and resonant
+  const attackTime = 0.015;
+  const decayTime = 0.25; // Longer decay for resonance
   const volume = 0.15 * intensity;
 
-  // First beat (lub) - lower frequency
-  const osc1 = _audioCtx.createOscillator();
-  const gain1 = _audioCtx.createGain();
-  osc1.type = 'sine';
-  osc1.frequency.setValueAtTime(55, time);
-  osc1.frequency.exponentialRampToValueAtTime(35, time + 0.1);
-  gain1.gain.setValueAtTime(0, time);
-  gain1.gain.linearRampToValueAtTime(volume, time + attackTime);
-  gain1.gain.exponentialRampToValueAtTime(0.001, time + decayTime);
+  // === FIRST BEAT (LUB) - Deep, thick, layered ===
 
-  osc1.connect(gain1);
-  gain1.connect(_masterGain);
-  osc1.start(time);
-  osc1.stop(time + 0.15);
+  // Sub-bass foundation (you feel this in your chest)
+  const sub1 = _audioCtx.createOscillator();
+  const subGain1 = _audioCtx.createGain();
+  sub1.type = 'sine';
+  sub1.frequency.setValueAtTime(32, time); // Very deep
+  sub1.frequency.exponentialRampToValueAtTime(24, time + 0.2);
+  subGain1.gain.setValueAtTime(0, time);
+  subGain1.gain.linearRampToValueAtTime(volume * 2.0, time + attackTime);
+  subGain1.gain.exponentialRampToValueAtTime(0.001, time + decayTime);
+  sub1.connect(subGain1);
+  subGain1.connect(_masterGain);
+  sub1.start(time);
+  sub1.stop(time + 0.35);
 
-  // Second beat (dub) - slightly higher, slightly delayed
-  const osc2 = _audioCtx.createOscillator();
-  const gain2 = _audioCtx.createGain();
-  const dubTime = time + 0.12;
-  osc2.type = 'sine';
-  osc2.frequency.setValueAtTime(70, dubTime);
-  osc2.frequency.exponentialRampToValueAtTime(45, dubTime + 0.08);
-  gain2.gain.setValueAtTime(0, dubTime);
-  gain2.gain.linearRampToValueAtTime(volume * 0.7, dubTime + attackTime);
-  gain2.gain.exponentialRampToValueAtTime(0.001, dubTime + decayTime * 0.8);
+  // Mid-bass body (thickness)
+  const mid1 = _audioCtx.createOscillator();
+  const midGain1 = _audioCtx.createGain();
+  mid1.type = 'sine';
+  mid1.frequency.setValueAtTime(55, time);
+  mid1.frequency.exponentialRampToValueAtTime(35, time + 0.15);
+  midGain1.gain.setValueAtTime(0, time);
+  midGain1.gain.linearRampToValueAtTime(volume * 1.5, time + attackTime);
+  midGain1.gain.exponentialRampToValueAtTime(0.001, time + decayTime * 0.8);
+  mid1.connect(midGain1);
+  midGain1.connect(_masterGain);
+  mid1.start(time);
+  mid1.stop(time + 0.3);
 
-  osc2.connect(gain2);
-  gain2.connect(_masterGain);
-  osc2.start(dubTime);
-  osc2.stop(dubTime + 0.12);
+  // Upper harmonic (warmth and presence)
+  const harm1 = _audioCtx.createOscillator();
+  const harmGain1 = _audioCtx.createGain();
+  harm1.type = 'sine';
+  harm1.frequency.setValueAtTime(110, time);
+  harm1.frequency.exponentialRampToValueAtTime(70, time + 0.12);
+  harmGain1.gain.setValueAtTime(0, time);
+  harmGain1.gain.linearRampToValueAtTime(volume * 0.6, time + attackTime);
+  harmGain1.gain.exponentialRampToValueAtTime(0.001, time + decayTime * 0.5);
+  harm1.connect(harmGain1);
+  harmGain1.connect(_reverbConvolver); // Send to reverb for church-like resonance
+  harm1.start(time);
+  harm1.stop(time + 0.2);
+
+  // === SECOND BEAT (DUB) - Slightly higher, still thick ===
+  const dubTime = time + 0.14;
+
+  // Sub-bass
+  const sub2 = _audioCtx.createOscillator();
+  const subGain2 = _audioCtx.createGain();
+  sub2.type = 'sine';
+  sub2.frequency.setValueAtTime(40, dubTime);
+  sub2.frequency.exponentialRampToValueAtTime(28, dubTime + 0.15);
+  subGain2.gain.setValueAtTime(0, dubTime);
+  subGain2.gain.linearRampToValueAtTime(volume * 1.4, dubTime + attackTime);
+  subGain2.gain.exponentialRampToValueAtTime(0.001, dubTime + decayTime * 0.7);
+  sub2.connect(subGain2);
+  subGain2.connect(_masterGain);
+  sub2.start(dubTime);
+  sub2.stop(dubTime + 0.25);
+
+  // Mid-bass body
+  const mid2 = _audioCtx.createOscillator();
+  const midGain2 = _audioCtx.createGain();
+  mid2.type = 'sine';
+  mid2.frequency.setValueAtTime(70, dubTime);
+  mid2.frequency.exponentialRampToValueAtTime(45, dubTime + 0.12);
+  midGain2.gain.setValueAtTime(0, dubTime);
+  midGain2.gain.linearRampToValueAtTime(volume * 1.0, dubTime + attackTime);
+  midGain2.gain.exponentialRampToValueAtTime(0.001, dubTime + decayTime * 0.6);
+  mid2.connect(midGain2);
+  midGain2.connect(_masterGain);
+  mid2.start(dubTime);
+  mid2.stop(dubTime + 0.2);
+
+  // Upper harmonic with reverb
+  const harm2 = _audioCtx.createOscillator();
+  const harmGain2 = _audioCtx.createGain();
+  harm2.type = 'sine';
+  harm2.frequency.setValueAtTime(140, dubTime);
+  harm2.frequency.exponentialRampToValueAtTime(90, dubTime + 0.1);
+  harmGain2.gain.setValueAtTime(0, dubTime);
+  harmGain2.gain.linearRampToValueAtTime(volume * 0.4, dubTime + attackTime);
+  harmGain2.gain.exponentialRampToValueAtTime(0.001, dubTime + decayTime * 0.4);
+  harm2.connect(harmGain2);
+  harmGain2.connect(_reverbConvolver);
+  harm2.start(dubTime);
+  harm2.stop(dubTime + 0.15);
 }
 
 /* ============================================================
@@ -247,6 +314,27 @@ function updateAudio(bpm, arousal, valence, proximity, stage) {
     _audioCtx.resume();
   }
 
+  const now = _audioCtx.currentTime;
+
+  // Detect stage change and start transition
+  if (stage !== _lastStage) {
+    _stageTransitionStart = now;
+    _lastStage = stage;
+  }
+
+  // Track stage 4 start time
+  if (stage === 4 && _stage4StartTime <= 0) {
+    _stage4StartTime = now;
+  }
+  // Reset stage 4 time if we leave stage 4
+  if (stage !== 4) {
+    _stage4StartTime = 0;
+  }
+
+  // Calculate stage blend (0 = just entered new stage, 1 = fully in new stage)
+  const timeSinceTransition = now - _stageTransitionStart;
+  _audioState.stageBlend = Math.min(1, timeSinceTransition / _stageTransitionDuration);
+
   // Set target state
   _targetState.bpm = bpm;
   _targetState.arousal = arousal;
@@ -254,26 +342,24 @@ function updateAudio(bpm, arousal, valence, proximity, stage) {
   _targetState.proximity = proximity;
   _targetState.stage = stage;
 
-  // Smooth interpolation
-  const smoothing = 0.05;
+  // Smooth interpolation - slower for smoother audio transitions
+  const smoothing = 0.03;
   _audioState.bpm = _lerp(_audioState.bpm, _targetState.bpm, smoothing);
   _audioState.arousal = _lerp(_audioState.arousal, _targetState.arousal, smoothing);
   _audioState.valence = _lerp(_audioState.valence, _targetState.valence, smoothing);
   _audioState.proximity = _lerp(_audioState.proximity, _targetState.proximity, smoothing);
   _audioState.stage = stage;
 
-  const now = _audioCtx.currentTime;
-
-  // Update drone based on valence
+  // Update drone based on valence and emotion
   _updateDrone(now);
 
-  // Update texture based on arousal
+  // Update texture based on arousal and emotion
   _updateTexture(now);
 
   // Schedule heartbeats
   _scheduleHeartbeats(now);
 
-  // Update master volume based on stage
+  // Update master volume based on stage with smooth transitions
   _updateMasterVolume(now);
 }
 
@@ -281,79 +367,188 @@ function _updateDrone(now) {
   const v = _audioState.valence;
   const a = _audioState.arousal;
   const stage = _audioState.stage;
+  const prox = _audioState.proximity;
+  const blend = _audioState.stageBlend;
 
-  // Base frequencies shift based on valence
-  // Positive valence: Major feel (C-E-G)
-  // Negative valence: Minor/diminished feel (C-Eb-Gb)
-  const baseFreqs = [65.41, 98.00, 130.81, 196.00];
+  // Base frequencies - C major chord
+  const baseFreqs = [65.41, 98.00, 130.81, 196.00]; // C2, G2, C3, G3
 
   for (let i = 0; i < _droneOscs.length; i++) {
     let freq = baseFreqs[i];
 
-    // Valence affects harmonic content
+    // Emotion-based frequency modulation (stronger in stages 2 & 3)
+    const emotionInfluence = (stage === 2 || stage === 3) ? 1.0 : 0.3;
+
     if (v < 0) {
-      // Negative: Flatten thirds, create tension
-      if (i === 1) freq *= 0.944; // Flatten to minor third region
-      if (i === 2) freq *= 0.97;
-      if (i === 3) freq *= 0.89; // Create dissonance
+      // Negative emotions: Minor/diminished feel with more tension
+      const tension = Math.abs(v) * emotionInfluence;
+      if (i === 1) freq *= _lerp(1.0, 0.89, tension); // Flatten to minor
+      if (i === 2) freq *= _lerp(1.0, 0.94, tension); // Add dissonance
+      if (i === 3) freq *= _lerp(1.0, 0.84, tension); // Tritone tension for fear/anxiety
     } else {
-      // Positive: Brighten slightly
-      if (i === 2) freq *= 1.02;
-      if (i === 3) freq *= 1.05;
+      // Positive emotions: Warm major feel
+      const warmth = v * emotionInfluence;
+      if (i === 2) freq *= _lerp(1.0, 1.04, warmth); // Brighten major third
+      if (i === 3) freq *= _lerp(1.0, 1.08, warmth); // Perfect fifth shimmer
     }
 
-    // Arousal affects pitch slightly (higher arousal = slightly sharper)
-    freq *= 1 + (a - 0.5) * 0.02;
+    // Arousal adds slight pitch variation
+    freq *= 1 + (a - 0.5) * 0.03 * emotionInfluence;
 
-    _droneOscs[i].frequency.setTargetAtTime(freq, now, 0.5);
+    // Stage 3: Proximity creates harmonic beating (two hearts)
+    if (stage === 3 && prox > 0.1) {
+      const beating = Math.sin(now * 0.5 + i) * prox * 0.02;
+      freq *= 1 + beating;
+    }
 
-    // Volume based on stage and arousal
+    _droneOscs[i].frequency.setTargetAtTime(freq, now, 0.8);
+
+    // Volume based on stage with smooth transitions
     let vol = 0.06 / (i + 1);
-    if (stage === 1) vol *= 0.3; // Subtle in age stage
-    if (stage === 4) vol *= Math.max(0, 1 - (_audioCtx.currentTime % 30) / 30); // Fade in death
-    vol *= 0.5 + a * 0.5; // Arousal affects volume
 
-    _droneGains[i].gain.setTargetAtTime(vol, now, 0.3);
+    // Stage 1: Subtle drone, builds toward stage 2
+    if (stage === 1) {
+      vol *= _lerp(0.2, 0.5, blend);
+    }
+    // Stage 2 & 3: Full emotional expression
+    else if (stage === 2 || stage === 3) {
+      const stageVol = stage === 2 ? 1.0 : _lerp(0.9, 1.1, prox);
+      vol *= _lerp(0.5, stageVol, blend);
+    }
+    // Stage 4: Continue from stage 3, then fade with death
+    else if (stage === 4) {
+      let timeSinceStart = now - _stage4StartTime;
+      if (_stage4StartTime <= 0 || timeSinceStart < 0) {
+        timeSinceStart = blend * 36;
+      }
+
+      const transitionDur = 20;
+      const holdDur = 12;
+      const fadeDur = 4;
+
+      if (timeSinceStart < transitionDur) {
+        // One dies - drop to 50%
+        const dropProgress = Math.min(1, timeSinceStart / transitionDur);
+        vol *= _lerp(1.0, 0.5, Math.pow(dropProgress, 0.5));
+      } else if (timeSinceStart < transitionDur + holdDur) {
+        vol *= 0.5;
+      } else {
+        // Both die - fade out
+        const fadeProgress = Math.min(1, (timeSinceStart - transitionDur - holdDur) / fadeDur);
+        vol *= _lerp(0.5, 0.05, Math.pow(fadeProgress, 0.7));
+      }
+    }
+
+    // Arousal affects volume intensity
+    vol *= 0.5 + a * 0.6;
+
+    _droneGains[i].gain.setTargetAtTime(vol, now, 0.5);
   }
 
-  // Filter based on valence and arousal
-  // Negative valence = darker (lower cutoff)
-  // High arousal = brighter (higher cutoff)
-  const filterFreq = 200 + (v + 1) * 150 + a * 300;
-  _droneFilter.frequency.setTargetAtTime(filterFreq, now, 0.3);
+  // Filter - emotional coloring
+  // Negative = darker, Positive = brighter, Arousal = more presence
+  let filterFreq = 250 + (v + 1) * 180 + a * 400;
+
+  // Stage transitions affect filter
+  if (stage === 1) filterFreq *= _lerp(0.6, 0.9, blend);
+
+  // Stage 4: Gradually darken as death progresses
+  if (stage === 4) {
+    const timeSinceStart = now - _stage4StartTime;
+    const totalDur = 36;
+    const progress = Math.min(1, timeSinceStart / totalDur);
+    filterFreq *= _lerp(1.0, 0.3, Math.pow(progress, 0.6));
+  }
+
+  _droneFilter.frequency.setTargetAtTime(filterFreq, now, 0.5);
 }
 
 function _updateTexture(now) {
   const a = _audioState.arousal;
   const v = _audioState.valence;
   const stage = _audioState.stage;
+  const prox = _audioState.proximity;
+  const blend = _audioState.stageBlend;
 
-  // Texture volume increases with arousal (1.5x original)
-  let vol = 0.015 + a * 0.09;
-  if (stage === 1) vol *= 0.2;
-  if (stage === 4) vol *= 0.1;
+  // Base texture volume from arousal
+  let vol = 0.01 + a * 0.08;
 
-  // Negative emotions get more texture
-  if (v < 0) vol *= 1.3;
+  // Stage-based volume with smooth transitions
+  if (stage === 1) {
+    vol *= _lerp(0.1, 0.3, blend); // Subtle, building
+  } else if (stage === 2) {
+    vol *= _lerp(0.3, 1.0, blend); // Full expression
+  } else if (stage === 3) {
+    // Proximity affects texture (intimacy reduces noise)
+    vol *= _lerp(1.0, _lerp(1.0, 0.6, prox), blend);
+  } else if (stage === 4) {
+    // Continue from stage 3, then fade with death
+    let timeSinceStart = now - _stage4StartTime;
+    if (_stage4StartTime <= 0 || timeSinceStart < 0) {
+      timeSinceStart = blend * 36;
+    }
 
-  _textureGain.gain.setTargetAtTime(vol, now, 0.3);
+    const transitionDur = 20;
+    const holdDur = 12;
+    const fadeDur = 4;
 
-  // Filter frequency based on arousal and valence
-  // High arousal = higher, more piercing
-  // Negative valence = slightly lower, more ominous
-  const baseFreq = 400 + a * 1200;
-  const valenceShift = v * 200;
-  _textureFilter.frequency.setTargetAtTime(baseFreq + valenceShift, now, 0.3);
+    if (timeSinceStart < transitionDur) {
+      const dropProgress = Math.min(1, timeSinceStart / transitionDur);
+      vol *= _lerp(1.0, 0.5, Math.pow(dropProgress, 0.5));
+    } else if (timeSinceStart < transitionDur + holdDur) {
+      vol *= 0.5;
+    } else {
+      const fadeProgress = Math.min(1, (timeSinceStart - transitionDur - holdDur) / fadeDur);
+      vol *= _lerp(0.5, 0.02, Math.pow(fadeProgress, 0.7));
+    }
+  }
 
-  // Q (resonance) increases with negative emotion
-  const q = 0.5 + Math.max(0, -v) * 2 + a * 1.5;
-  _textureFilter.Q.setTargetAtTime(q, now, 0.3);
+  // Negative emotions add more texture/tension
+  if (v < 0) {
+    vol *= 1.0 + Math.abs(v) * 0.5;
+  }
+
+  _textureGain.gain.setTargetAtTime(vol, now, 0.5);
+
+  // Filter frequency - emotional character
+  // High arousal = higher, more piercing (anxiety, excitement)
+  // Low arousal = lower, softer (comfort, grief)
+  let baseFreq = 300 + a * 1400;
+
+  // Valence shifts the character
+  // Positive = warmer, higher shimmer
+  // Negative = harsher, lower rumble
+  const valenceShift = v * 300;
+  baseFreq += valenceShift;
+
+  // Stage 1: More muted
+  if (stage === 1) baseFreq *= _lerp(0.5, 0.8, blend);
+
+  // Stage 4: Gradually darken with death
+  if (stage === 4) {
+    const timeSinceStart = now - _stage4StartTime;
+    const totalDur = 36; // total stage 4 duration
+    const progress = Math.min(1, timeSinceStart / totalDur);
+    baseFreq *= _lerp(1.0, 0.3, Math.pow(progress, 0.5));
+  }
+
+  _textureFilter.frequency.setTargetAtTime(Math.max(100, baseFreq), now, 0.5);
+
+  // Q (resonance) - negative emotions are sharper, more resonant
+  let q = 0.3 + a * 1.2;
+  if (v < 0) q += Math.abs(v) * 2.5; // Anxiety/fear gets piercing
+  if (v > 0) q *= 0.7; // Comfort/joy is smoother
+
+  _textureFilter.Q.setTargetAtTime(Math.min(q, 8), now, 0.5);
 }
 
 function _scheduleHeartbeats(now) {
   const bpm = _audioState.bpm;
   const beatInterval = 60 / bpm;
   const stage = _audioState.stage;
+  const blend = _audioState.stageBlend;
+  const a = _audioState.arousal;
+  const prox = _audioState.proximity;
 
   // Schedule beats ahead of time for precise timing
   while (_nextBeatTime < now + 0.1) {
@@ -361,10 +556,46 @@ function _scheduleHeartbeats(now) {
       _nextBeatTime = now;
     }
 
-    // Heartbeat intensity varies by stage
+    // Heartbeat intensity varies by stage with smooth transitions
     let intensity = 0.8;
-    if (stage === 1) intensity = 6.4; // 8x louder heartbeat in first stage
-    if (stage === 4) intensity = Math.max(0.1, 1 - (_audioCtx.currentTime % 20) / 20);
+
+    if (stage === 1) {
+      // Stage 1: Prominent heartbeat, fades slightly toward stage 2
+      intensity = _lerp(19.2, 15.0, blend);
+    } else if (stage === 2) {
+      // Stage 2: Strong heartbeat, arousal affects intensity
+      intensity = _lerp(15.0, 9.0 + a * 6.0, blend);
+    } else if (stage === 3) {
+      // Stage 3: Strong heartbeat, proximity and arousal affect intensity
+      const proxIntensity = 9.0 + prox * 4.5 + a * 4.5;
+      intensity = _lerp(12.0, proxIntensity, blend);
+    } else if (stage === 4) {
+      // Stage 4: Death progression - one dies (50%), then both die (no beats)
+      let timeSinceStart = now - _stage4StartTime;
+
+      // Safety check - if stage4StartTime not set properly, use blend
+      if (_stage4StartTime <= 0 || timeSinceStart < 0) {
+        timeSinceStart = blend * 36; // Estimate based on blend
+      }
+
+      const transitionDur = 20;
+      const holdDur = 12;
+
+      // Start consistent with end of stage 3 - use high base intensity
+      const baseIntensity = 15.0;
+
+      if (timeSinceStart < transitionDur) {
+        // One dies - drop to 50%
+        const dropProgress = Math.min(1, timeSinceStart / transitionDur);
+        intensity = baseIntensity * _lerp(1.0, 0.5, Math.pow(dropProgress, 0.5));
+      } else if (timeSinceStart < transitionDur + holdDur) {
+        // Hold at 50%
+        intensity = baseIntensity * 0.5;
+      } else {
+        // Flatline - NO heartbeats at all
+        intensity = 0;
+      }
+    }
 
     _triggerHeartbeat(_nextBeatTime, intensity);
     _nextBeatTime += beatInterval;
@@ -373,15 +604,46 @@ function _scheduleHeartbeats(now) {
 
 function _updateMasterVolume(now) {
   const stage = _audioState.stage;
+  const blend = _audioState.stageBlend;
+  const a = _audioState.arousal;
   let vol = 0.35;
 
-  // Stage 4: Fade to silence
-  if (stage === 4) {
-    // Gradual fade over the death stage
-    vol *= 0.3;
+  // Stage-based volume with smooth transitions
+  if (stage === 1) {
+    // Stage 1: Start moderate, build slightly
+    vol *= _lerp(0.7, 0.85, blend);
+  } else if (stage === 2) {
+    // Stage 2: Full expression, arousal affects intensity
+    vol *= _lerp(0.85, 0.9 + a * 0.15, blend);
+  } else if (stage === 3) {
+    // Stage 3: Similar to stage 2
+    vol *= 0.9 + a * 0.15;
+  } else if (stage === 4) {
+    // Stage 4: Death progression
+    let timeSinceStart = now - _stage4StartTime;
+    if (_stage4StartTime <= 0 || timeSinceStart < 0) {
+      timeSinceStart = blend * 36;
+    }
+
+    const transitionDur = 20;
+    const holdDur = 12;
+    const fadeDur = 4;
+
+    if (timeSinceStart < transitionDur) {
+      // One person dies - smooth drop to 50%
+      const dropProgress = Math.min(1, timeSinceStart / transitionDur);
+      vol *= _lerp(1.0, 0.5, Math.pow(dropProgress, 0.5));
+    } else if (timeSinceStart < transitionDur + holdDur) {
+      // Hold at 50%
+      vol *= 0.5;
+    } else {
+      // Final fade - both die
+      const fadeProgress = Math.min(1, (timeSinceStart - transitionDur - holdDur) / fadeDur);
+      vol *= _lerp(0.5, 0.05, Math.pow(fadeProgress, 0.7));
+    }
   }
 
-  _masterGain.gain.setTargetAtTime(vol, now, 0.5);
+  _masterGain.gain.setTargetAtTime(vol, now, 0.8);
 }
 
 /* ============================================================
